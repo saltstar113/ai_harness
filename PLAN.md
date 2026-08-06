@@ -66,6 +66,12 @@ T01 ──→ T02 ──┬─── T04 (Config) ──→ T07→T08→T09→T1
 - Consumes: (none — first task)
 - Produces: `tmp_workspace` fixture (临时目录 Path), `sample_action` fixture, `sample_session` fixture
 
+- [ ] **Step 0: 初始化 Git 仓库**
+
+```bash
+git init
+```
+
 - [ ] **Step 1: 创建 `.gitignore`**
 
 ```

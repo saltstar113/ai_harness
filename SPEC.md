@@ -609,7 +609,7 @@ class GuardRule:
 @dataclass
 class GuardDecision:
     """治理判定结果"""
-    verdict: str                           # SAFE | WARN | BLOCK
+    verdict: Verdict                         # SAFE | WARN | BLOCK
     matched_rule: str = "default"
     reason: str = ""
 
