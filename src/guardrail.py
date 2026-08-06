@@ -45,3 +45,13 @@ class GuardEngine:
             "run_lint": "Shell",
         }
         return mapping.get(tool, "Unknown")
+
+    def validate_path(self, target: str) -> GuardDecision:
+        resolved = Path(target).resolve()
+        if not resolved.is_relative_to(self.workspace):
+            return GuardDecision(
+                verdict=Verdict.BLOCK,
+                matched_rule="path-boundary",
+                reason=f"路径越界：{target} 不在 workspace {self.workspace} 内"
+            )
+        return GuardDecision(verdict=Verdict.SAFE, matched_rule="default", reason="")

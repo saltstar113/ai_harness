@@ -65,3 +65,34 @@ def test_unknown_tool_returns_safe():
     action = Action(tool="unknown_tool", params={})
     decision = engine.check(action)
     assert decision.verdict == Verdict.SAFE
+
+
+def test_path_traversal_blocked(tmp_path):
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    (workspace / "src").mkdir()
+    (tmp_path / "outside").mkdir()
+    (tmp_path / "outside" / "secret.txt").write_text("secret")
+    engine = GuardEngine([], workspace)
+    decision = engine.validate_path(str(tmp_path / "outside" / "secret.txt"))
+    assert decision.verdict == Verdict.BLOCK
+    assert "路径越界" in decision.reason
+
+
+def test_path_in_workspace_allowed(tmp_path):
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    (workspace / "src").mkdir()
+    (workspace / "src" / "main.py").write_text("code")
+    engine = GuardEngine([], workspace)
+    decision = engine.validate_path(str(workspace / "src" / "main.py"))
+    assert decision.verdict == Verdict.SAFE
+
+
+def test_dot_dot_slash_traversal_blocked(tmp_path):
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    (workspace / "src").mkdir()
+    engine = GuardEngine([], workspace)
+    decision = engine.validate_path(str(workspace / "src" / "../../../etc/passwd"))
+    assert decision.verdict == Verdict.BLOCK
