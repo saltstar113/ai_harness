@@ -96,3 +96,27 @@ def test_dot_dot_slash_traversal_blocked(tmp_path):
     engine = GuardEngine([], workspace)
     decision = engine.validate_path(str(workspace / "src" / "../../../etc/passwd"))
     assert decision.verdict == Verdict.BLOCK
+
+
+def test_sudo_rm_rf_blocked():
+    engine = make_engine()
+    decision = engine.check_shell_command("sudo rm -rf /")
+    assert decision.verdict == Verdict.BLOCK
+
+
+def test_safe_ls_allowed():
+    engine = make_engine()
+    decision = engine.check_shell_command("ls -la")
+    assert decision.verdict == Verdict.SAFE
+
+
+def test_shlex_quote_handling():
+    engine = make_engine()
+    decision = engine.check_shell_command("rm -rf '/etc/passwd'")
+    assert decision.verdict == Verdict.BLOCK
+
+
+def test_env_prefix_rm_blocked():
+    engine = make_engine()
+    decision = engine.check_shell_command("env rm -rf /")
+    assert decision.verdict == Verdict.BLOCK

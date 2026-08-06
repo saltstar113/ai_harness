@@ -1,4 +1,5 @@
 import re
+import shlex
 from pathlib import Path
 from src.models import Action, GuardRule, GuardDecision, Verdict
 
@@ -54,4 +55,32 @@ class GuardEngine:
                 matched_rule="path-boundary",
                 reason=f"路径越界：{target} 不在 workspace {self.workspace} 内"
             )
+        return GuardDecision(verdict=Verdict.SAFE, matched_rule="default", reason="")
+
+    def check_shell_command(self, command: str) -> GuardDecision:
+        try:
+            tokens = shlex.split(command)
+        except ValueError:
+            return GuardDecision(verdict=Verdict.BLOCK, reason="命令解析失败")
+
+        cmd_name = tokens[0] if tokens else ""
+
+        shell_rules = [r for r in self.rules if r.action_type == "Shell" and r.pattern]
+        for rule in shell_rules:
+            if re.search(rule.pattern, command) or re.fullmatch(rule.pattern, cmd_name):
+                return GuardDecision(
+                    verdict=Verdict(rule.verdict),
+                    matched_rule=rule.id,
+                    reason=rule.description
+                )
+
+        joined = shlex.join(tokens)
+        for rule in shell_rules:
+            if re.search(rule.pattern, joined):
+                return GuardDecision(
+                    verdict=Verdict(rule.verdict),
+                    matched_rule=rule.id,
+                    reason=rule.description
+                )
+
         return GuardDecision(verdict=Verdict.SAFE, matched_rule="default", reason="")
