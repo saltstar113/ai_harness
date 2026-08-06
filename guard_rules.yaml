@@ -1,0 +1,40 @@
+rules:
+  - id: fs-delete-system
+    action_type: Filesystem
+    scope: System
+    risk_level: CRITICAL
+    verdict: BLOCK
+    pattern: "C:\\Windows\\|/etc/|/boot/|/usr/"
+    description: "禁止删除系统目录文件"
+
+  - id: shell-dangerous
+    action_type: Shell
+    scope: System
+    risk_level: CRITICAL
+    verdict: BLOCK
+    pattern: "rm -rf /|shutdown|reboot|mkfs"
+    description: "禁止执行危险系统命令"
+
+  - id: shell-sudo-rm
+    action_type: Shell
+    scope: System
+    risk_level: CRITICAL
+    verdict: BLOCK
+    pattern: "sudo rm|sudo del"
+    description: "禁止sudo删除操作"
+
+  - id: network-outbound
+    action_type: Shell
+    scope: Network
+    risk_level: HIGH
+    verdict: WARN
+    pattern: "curl|wget|nc |netcat"
+    description: "警告外网连接操作"
+
+  - id: git-force-push
+    action_type: Shell
+    scope: Git
+    risk_level: HIGH
+    verdict: BLOCK
+    pattern: "git push.*--force|git push.*-f"
+    description: "禁止强制推送代码"
