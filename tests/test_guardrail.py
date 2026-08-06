@@ -120,3 +120,45 @@ def test_env_prefix_rm_blocked():
     engine = make_engine()
     decision = engine.check_shell_command("env rm -rf /")
     assert decision.verdict == Verdict.BLOCK
+
+
+import pytest
+
+
+def test_full_check_integrates_path_validation(tmp_path):
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    (workspace / "src").mkdir()
+    rules = [
+        GuardRule(id="fs-write-block-system", action_type="FileSystem", scope="System", risk_level="CRITICAL", verdict="BLOCK", description="禁止写入系统文件"),
+    ]
+    engine = GuardEngine(rules, workspace)
+    action = Action(tool="write_file", params={"path": str(tmp_path / "outside" / "file.txt"), "content": "x"})
+    decision = engine.check(action)
+    assert decision.verdict == Verdict.BLOCK
+
+
+def test_full_check_integrates_shell_validation():
+    engine = make_engine()
+    action = Action(tool="execute_shell", params={"command": "sudo rm -rf /"})
+    decision = engine.check(action)
+    assert decision.verdict == Verdict.BLOCK
+
+
+@pytest.mark.parametrize("tool,params,expected_verdict", [
+    ("read_file", {"path": "src/main.py"}, Verdict.SAFE),
+    ("execute_shell", {"command": "rm -rf /"}, Verdict.BLOCK),
+    ("execute_shell", {"command": "shutdown now"}, Verdict.BLOCK),
+    ("execute_shell", {"command": "sudo rm -rf /etc"}, Verdict.BLOCK),
+    ("execute_shell", {"command": "env rm -rf /"}, Verdict.BLOCK),
+    ("execute_shell", {"command": "ls -la"}, Verdict.SAFE),
+    ("execute_shell", {"command": "python -m pytest"}, Verdict.SAFE),
+    ("execute_shell", {"command": "pip install pytest"}, Verdict.WARN),
+    ("read_file", {"path": "README.md"}, Verdict.SAFE),
+    ("write_file", {"path": "src/new.py", "content": "x"}, Verdict.SAFE),
+])
+def test_parametrize_rules(tool, params, expected_verdict):
+    engine = make_engine()
+    action = Action(tool=tool, params=params)
+    decision = engine.check(action)
+    assert decision.verdict == expected_verdict, f"Expected {expected_verdict} for {tool}({params})"

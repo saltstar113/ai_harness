@@ -13,20 +13,29 @@ class GuardEngine:
 
     def check(self, action: Action) -> GuardDecision:
         action_type = self._classify_action_type(action.tool)
-        candidates = [r for r in self.rules if r.action_type == action_type]
+
+        if action_type == "FileSystem":
+            target = action.params.get("path", "")
+            if target:
+                path_decision = self.validate_path(target)
+                if path_decision.verdict == Verdict.BLOCK:
+                    return path_decision
+
+        if action_type == "Shell":
+            command = action.params.get("command", "")
+            if command:
+                shell_decision = self.check_shell_command(command)
+                if shell_decision.verdict != Verdict.SAFE:
+                    return shell_decision
+
+        candidates = [r for r in self.rules if r.action_type == action_type and not r.pattern]
         if not candidates:
             return GuardDecision(verdict=Verdict.SAFE, reason="无匹配规则")
 
         best = None
         for rule in candidates:
-            if rule.pattern:
-                cmd = action.params.get("command", "") or action.params.get("path", "")
-                if re.search(rule.pattern, cmd):
-                    if best is None or VERDICT_PRIORITY[Verdict(rule.verdict)] > VERDICT_PRIORITY[Verdict(best.verdict)]:
-                        best = rule
-            else:
-                if best is None or VERDICT_PRIORITY[Verdict(rule.verdict)] > VERDICT_PRIORITY[Verdict(best.verdict)]:
-                    best = rule
+            if best is None or VERDICT_PRIORITY[Verdict(rule.verdict)] > VERDICT_PRIORITY[Verdict(best.verdict)]:
+                best = rule
 
         if best is None:
             return GuardDecision(verdict=Verdict.SAFE, reason="无匹配规则")
@@ -48,7 +57,11 @@ class GuardEngine:
         return mapping.get(tool, "Unknown")
 
     def validate_path(self, target: str) -> GuardDecision:
-        resolved = Path(target).resolve()
+        target_path = Path(target)
+        if not target_path.is_absolute():
+            resolved = (self.workspace / target_path).resolve()
+        else:
+            resolved = target_path.resolve()
         if not resolved.is_relative_to(self.workspace):
             return GuardDecision(
                 verdict=Verdict.BLOCK,
