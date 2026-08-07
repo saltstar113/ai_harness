@@ -4,7 +4,7 @@ rules:
     scope: System
     risk_level: CRITICAL
     verdict: BLOCK
-    pattern: "C:\\Windows\\|/etc/|/boot/|/usr/"
+    pattern: 'C:\\Windows\\|/etc/|/boot/|/usr/'
     description: "禁止删除系统目录文件"
 
   - id: shell-dangerous

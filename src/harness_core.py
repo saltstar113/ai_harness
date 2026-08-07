@@ -56,6 +56,8 @@ class AgentLoop:
                         action=action, guard_decision=guard_decision, approval=approval,
                         result=result, feedback=fb)
             turns.append(turn)
+            if fb.context_for_llm:
+                messages.append({"role": "user", "content": fb.context_for_llm})
             if not fb.should_retry and fb.category != "SUCCESS":
                 return TaskResult(status="circuit_breaker", turns=turns, summary=f"熔断于第 {turn_num} 轮")
         return TaskResult(status="success", turns=turns)
