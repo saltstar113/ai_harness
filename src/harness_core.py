@@ -16,11 +16,11 @@ class AgentLoop:
     def run(self, task: Task, session: Session) -> TaskResult:
         turns = []
         system_prompt = self._build_system_prompt(session)
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": task.description},
+        ]
         for turn_num in range(1, self.max_turns + 1):
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": task.description},
-            ]
             llm_response = self.llm.chat(messages)
             if llm_response.get("action") == "finish":
                 break
@@ -37,6 +37,7 @@ class AgentLoop:
                                     reason=guard_decision.reason)
                     approval = self.io.request_approval(action, risk)
                     if not approval.approved:
+                        messages.append({"role": "user", "content": f"动作被拒绝：{approval.reason}。请提供替代方案。"})
                         continue
             elif guard_decision.verdict == Verdict.WARN:
                 if self.io is not None:

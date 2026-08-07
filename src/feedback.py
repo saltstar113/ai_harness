@@ -44,6 +44,10 @@ class FeedbackEngine:
             return "TEST_FAILURE"
         if "Traceback" in stderr:
             return "RUNTIME_ERROR"
+        if any(code in stderr for code in ("E", "F", "W", "C", "N", "D", "PL", "RUF", "UP", "SIM")):
+            import re
+            if re.search(r"[A-Z]+\d{3,4}", stderr):
+                return "LINT_ERROR"
         if result.exit_code != 0:
             return "UNKNOWN_ERROR"
         return "SUCCESS"

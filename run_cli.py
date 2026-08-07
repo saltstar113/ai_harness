@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-from src.models import Task, Session
+from src.models import Task, Session, Action
 from src.config import load_rules
 from src.guardrail import GuardEngine
 from src.executor import Executor
@@ -66,7 +66,6 @@ def main():
         llm = ScriptedMockLLM([Action(tool="read_file", params={"path": "README.md"})])
     else:
         from src.credential import get_key
-        from src.models import Action
         key = get_key()
         if not key:
             print("请先配置 API Key: python run_cli.py credential set")
