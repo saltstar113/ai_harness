@@ -3,7 +3,8 @@ from src.models import Action, Task, TaskResult, Session, Turn, Verdict, RiskInf
 
 class AgentLoop:
     def __init__(self, llm, guard, executor, feedback, session_store,
-                 io=None, strict_mode: bool = False, max_turns: int = 50):
+                 io=None, strict_mode: bool = False, max_turns: int = 50,
+                 turn_callback=None):
         self.llm = llm
         self.guard = guard
         self.executor = executor
@@ -12,6 +13,7 @@ class AgentLoop:
         self.io = io
         self.strict_mode = strict_mode
         self.max_turns = max_turns
+        self.turn_callback = turn_callback
 
     def run(self, task: Task, session: Session) -> TaskResult:
         turns = []
@@ -56,6 +58,8 @@ class AgentLoop:
                         action=action, guard_decision=guard_decision, approval=approval,
                         result=result, feedback=fb)
             turns.append(turn)
+            if self.turn_callback:
+                self.turn_callback(turn)
             if fb.context_for_llm:
                 messages.append({"role": "user", "content": fb.context_for_llm})
             if not fb.should_retry and fb.category != "SUCCESS":
