@@ -33,7 +33,7 @@ class Executor:
 
     def _write_file(self, params, timeout):
         start = time.time()
-        path = Path(params["path"])
+        path = Path(params.get("path") or params.get("file_path") or params.get("file"))
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(params["content"], encoding="utf-8")
         return ToolResult(stdout="OK", exit_code=0, duration_ms=(time.time() - start) * 1000)

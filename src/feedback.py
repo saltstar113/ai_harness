@@ -27,6 +27,8 @@ class FeedbackEngine:
             context = f"[{category}]\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
             if category == "FILE_NOT_FOUND":
                 context += "\nHINT: Create the file first using write_file tool."
+            if category == "BAD_PARAMS":
+                context += "\nHINT: write_file expects params: {\"path\": \"filename\", \"content\": \"...\"}"
         elif round_num == 2:
             lines = result.stderr.strip().split("\n")
             key_lines = [l for l in lines if l.strip()][:5]
@@ -52,6 +54,8 @@ class FeedbackEngine:
                 return "LINT_ERROR"
         if "No such file" in stderr or "can't open file" in stderr:
             return "FILE_NOT_FOUND"
+        if isinstance(stderr, str) and len(stderr) < 50 and not any(c in stderr for c in ("\n", " ")):
+            return "BAD_PARAMS"
         if result.exit_code != 0:
             return "UNKNOWN_ERROR"
         return "SUCCESS"
