@@ -2499,6 +2499,8 @@ git commit -m "docs(T18): add README, install scripts, and security notes"
 | YAML 正则转义 | `01550a8` | `guard_rules.yaml` 反斜杠转义错误 |
 | Action 导入错误 | `a3d6e59` | BLOCK 拒绝理由未回灌 |
 | LINT_ERROR 分类 | `a3d6e59` | 线号格式未匹配 |
+| scope 过滤（遗留问题修复） | `beb2d6a` | `check()` 和 `check_shell_command()` 新增 `scope` 参数 |
+| STM 测试缺口（遗留问题修复） | `beb2d6a` | 7 个新测试覆盖 load/save/errors/conventions/search/corrupt/limit |
 
 **GUI 测试辅助（非作业要求）：**
 
@@ -2517,4 +2519,4 @@ git commit -m "docs(T18): add README, install scripts, and security notes"
 | 高级治理任务 (4 个) | `8ef1093` ~ `40d6ec3` |
 | 高级鲁棒性任务 (5 个) | `91fea0b` |
 
-**最终测试：87 passed, 2 skipped（零网络依赖）**
+**最终测试：98 passed, 2 skipped（零网络依赖）**

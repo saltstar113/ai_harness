@@ -237,3 +237,97 @@ Superpowers 的核心假设是"Agent 是一个热情但无品味、无判断力�
 2. **环境依赖必须显式声明**。`git init` 在主开发会话中是"显然已经做了"的事，但 PLAN 是给陌生 agent 的执行手册，必须从零开始描述每一步。
 
 3. **冷启动测试是单人项目中最接近"同侪评审"的机制**。它暴露的不是"代码写错了"，而是"你没写下来的假设"。这正是作业要求的核心意图——"一个全新的 agent 会在你未明文写下的每个假设处受阻；而这些受阻之处，恰恰是 spec 质量最有价值的反馈信号"。
+
+---
+
+## 七、冷启动验证补充：Agent 行为与修订 Diff
+
+### 7.1 冷启动 Agent 对话摘要
+
+冷启动 Agent 收到指令："根据 SPEC+PLAN 从 PLAN 选 1–2 个 task 自主推进，遇到不确定之处即暂停询问"，随后依次尝试了 T01→T02→T03→T04→T05。
+
+**Agent 暂停提问的时刻：**
+
+| 轮次 | 暂停位置 | Agent 的提问 |
+|------|----------|-------------|
+| 第 1 轮 | T02 数据模型实现 | "PLAN 里 T02 的示例测试把 `Verdict` 写成了 `Ver`，和 SPEC 的命名不一致。我先暂停，等你确认是统一用 `Verdict` 还是额外加 `Ver` 别名。" |
+| 第 1 轮 | T01 验证步骤 | `git check-ignore .env` 报错：`fatal: not a git repository`。Agent 将此事记录为 blocker 但未提问——它自己判断这是环境问题，暂停等待用户决策。 |
+| 第 1 轮 | T01 验证步骤 | `pytest --collect-only` 报错：`pytest` 未安装。Agent 同样记录为 blocker。 |
+
+**Agent 的实际产出 vs 预期：**
+
+| Task | Agent 产出 | 评估 |
+|------|-----------|------|
+| T01 | `.gitignore`, `requirements.txt`, `pytest.ini`, `conftest.py` | 完全正确，与 SPEC/PLAN 一致 |
+| T02 | `src/models.py`（含全部 12 个 dataclass），`test_models.py`（7 个测试） | 正确——Agent 按用户确认统一使用 `Verdict`，未加 `Ver` 别名 |
+| T03 | `src/mock_llm.py`（`ScriptedMockLLM`），`test_mock_llm.py` | 功能正确，但存在一个 off-by-one bug：`call_count` 在读取动作前递增，导致第 3 次调用跳过了第 3 个动作。Agent 自行发现并修复了此 bug（2 次迭代）。 |
+| T04 | `src/config.py`（`load_rules` + `BUILTIN_RULES`），`guard_rules.yaml`，`test_config.py` | 完全正确 |
+| T05 | `src/credential.py`（set/status/clear），`test_credential.py`（4 个测试） | 完全正确 |
+
+**产出与预期差距：** 极小。Agent 成功完成了 T01-T05，产出的代码在主仓库中可直接沿用（T02 模型层后来被主分支 subagent 重新实现，但结构一致）。唯一的功能性 bug（T03 off-by-one）被 Agent 自行发现并修复。差距不在代码质量，而在"隐性上下文"——Agent 遇到 3 处 SPEC/PLAN 未明文写下的假设后暂停，这些暂停恰好暴露了文档缺陷。
+
+### 7.2 缺陷分析：Spec 写错 vs Agent 读错
+
+| # | 缺陷 | 是 spec 写错还是 agent 读错？ | 分析 |
+|---|------|---------------------------|------|
+| 1 | `GuardDecision.verdict` 类型声明为 `str`，但 SPEC 和 PLAN 的代码示例均使用 `Ver.BLOCK`（枚举） | **Spec 写错** | SPEC 第 6 章类型声明 `verdict: str` 与第 11 章代码示例 `Ver.BLOCK` 矛盾。Agent 的正确做法是停下来询问而非猜测——它确实这么做了。如果 Agent 自作主张选了 `str`，后续所有 `guardrail.py` 的枚举比较逻辑都会失效。 |
+| 2 | `git check-ignore .env` 失败：目录不是 Git 仓库 | **Spec 写错** | PLAN T01 的验证步骤假定工作区已是 Git 仓库。主开发会话中这个假设成立（仓库早已存在），但冷启动 Agent 从零开始，`git init` 是必须的步骤。Agent 将此事记录为 blocker 后等待用户决策，而非跳过验证。 |
+| 3 | `pytest` 未安装 | **Agent 读错** | PLAN T01 Step 5 已明确写 `pip install -r requirements.txt`，但 Agent 在未执行安装步骤的情况下直接运行了 `pytest --collect-only`。这是 Agent 执行顺序的疏忽，非文档缺陷。 |
+
+### 7.3 修订前后关键 Diff
+
+**修订 1：SPEC 第 6 章 — `GuardDecision.verdict` 类型声明（commit `c70229c`）**
+
+```diff
+ @dataclass
+ class GuardDecision:
+     """治理判定结果"""
+-    verdict: str                           # SAFE | WARN | BLOCK
++    verdict: Verdict                       # SAFE | WARN | BLOCK
+     matched_rule: str = "default"
+     reason: str = ""
+```
+
+**修订 2：PLAN T01 — 新增 Step 0 `git init`（commit `c70229c`）**
+
+```diff
+ - Consumes: (none — first task)
+ - Produces: `tmp_workspace` fixture, `sample_action` fixture, `sample_session` fixture
+
++- [ ] **Step 0: 初始化 Git 仓库**
++
++```bash
++git init
++```
++
+ - [ ] **Step 1: 创建 `.gitignore`**
+```
+
+**修订 3：无可修改 — 缺陷 3（pytest 未安装）**
+
+PLAN 中 `pip install` 步骤在 `pytest` 命令之前，顺序正确，无需修改文档。根因是 Agent 未按顺序执行。
+
+### 7.4 冷启动验证的额外发现：Agent 的 off-by-one 自修复
+
+冷启动 Agent 在 T03 实现中暴露了一个值得记录的细微 bug：
+
+```python
+# Agent 初版（有 bug）
+def chat(self, messages):
+    self.call_count += 1            # 先递增
+    if self.call_count > len(self.queue):
+        return {"action": "finish"}
+    return self.to_response(self.queue[self.call_count - 1])  # 后减一
+```
+
+```python
+# Agent 修复版（正确）
+def chat(self, messages):
+    if self.call_count >= len(self.queue):
+        return {"action": "finish"}
+    action = self.queue[self.call_count]
+    self.call_count += 1            # 后递增
+    return self.to_response(action)
+```
+
+Agent 通过运行测试自行发现此 bug（"第三次调用应命中第 3 个动作，但实际命中了第 2 个"），并在 2 次迭代内修复。这说明即使是确定性代码（Mock LLM），SPEC 和 PLAN 也无法覆盖所有实现细节——Agent 的自我纠错能力（跑测试→发现失败→修 bug）是最终产出质量的关键保障。
