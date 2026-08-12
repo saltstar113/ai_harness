@@ -71,8 +71,9 @@ class GuardEngine:
         return GuardDecision(verdict=Verdict.SAFE, matched_rule="default", reason="")
 
     def check_shell_command(self, command: str) -> GuardDecision:
+        normalized = re.sub(r'\$IFS|\$\{IFS\}', ' ', command)
         try:
-            tokens = shlex.split(command)
+            tokens = shlex.split(normalized)
         except ValueError:
             return GuardDecision(verdict=Verdict.BLOCK, reason="命令解析失败")
 
@@ -80,7 +81,7 @@ class GuardEngine:
 
         shell_rules = [r for r in self.rules if r.action_type == "Shell" and r.pattern]
         for rule in shell_rules:
-            if re.search(rule.pattern, command) or re.fullmatch(rule.pattern, cmd_name):
+            if re.search(rule.pattern, normalized) or re.fullmatch(rule.pattern, cmd_name):
                 return GuardDecision(
                     verdict=Verdict(rule.verdict),
                     matched_rule=rule.id,

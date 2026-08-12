@@ -63,6 +63,11 @@ class ScenarioMockLLM:
             Action(tool="execute_shell", params={"command": "git push --force origin main"}),
             Action(tool="write_file", params={"path": "ok.txt", "content": "done"}),
         ],
+        "rejection_self_correct": [
+            Action(tool="write_file", params={"path": "/etc/config", "content": "malicious"}),
+            # BLOCK → agent receives rejection feedback → self-corrects
+            Action(tool="write_file", params={"path": "local_config", "content": "safe"}),
+        ],
     }
 
     def __init__(self, scenario: str):
@@ -96,6 +101,12 @@ class ScenarioMockLLM:
 
         elif self.scenario == "strict_mode_warn":
             if self._idx == 0 and "WARN" in self._last_message:
+                self._idx = 1
+                action = self.actions[1]
+            self._idx = min(self._idx + 1, len(self.actions))
+
+        elif self.scenario == "rejection_self_correct":
+            if self._idx == 0 and ("拒绝" in self._last_message or "rejected" in self._last_message.lower()):
                 self._idx = 1
                 action = self.actions[1]
             self._idx = min(self._idx + 1, len(self.actions))

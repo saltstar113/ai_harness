@@ -162,3 +162,74 @@ def test_parametrize_rules(tool, params, expected_verdict):
     action = Action(tool=tool, params=params)
     decision = engine.check(action)
     assert decision.verdict == expected_verdict, f"Expected {expected_verdict} for {tool}({params})"
+
+
+# === Task 1: Symlink escape ===
+
+def test_symlink_escape_blocked(tmp_path):
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    (workspace / "safe").mkdir()
+    (tmp_path / "secret").mkdir()
+    (tmp_path / "secret" / "passwd.txt").write_text("root:x:0:0")
+    import os
+    try:
+        os.symlink(str(tmp_path / "secret"), str(workspace / "safe" / "link"))
+    except OSError:
+        import pytest
+        pytest.skip("Symlink creation requires admin privileges on Windows")
+    engine = GuardEngine([], workspace)
+    decision = engine.validate_path(str(workspace / "safe" / "link" / "passwd.txt"))
+    assert decision.verdict == Verdict.BLOCK
+
+
+def test_symlink_escape_full_check(tmp_path):
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    (tmp_path / "secret").mkdir()
+    (tmp_path / "secret" / "passwd.txt").write_text("root:x:0:0")
+    import os
+    try:
+        os.symlink(str(tmp_path / "secret"), str(workspace / "link_out"))
+    except OSError:
+        import pytest
+        pytest.skip("Symlink requires admin on Windows")
+    rules = [
+        GuardRule(id="fs-block", action_type="FileSystem", scope="System", risk_level="CRITICAL", verdict="BLOCK", description="block system"),
+    ]
+    engine = GuardEngine(rules, workspace)
+    action = Action(tool="read_file", params={"path": str(workspace / "link_out" / "passwd.txt")})
+    decision = engine.check(action)
+    assert decision.verdict == Verdict.BLOCK
+
+
+# === Task 2: Obfuscated shell commands ===
+
+def test_compound_command_semicolon_blocked():
+    engine = make_engine()
+    decision = engine.check_shell_command("echo ok; rm -rf /")
+    assert decision.verdict == Verdict.BLOCK
+
+
+def test_compound_command_andand_blocked():
+    engine = make_engine()
+    decision = engine.check_shell_command("echo ok && rm -rf /")
+    assert decision.verdict == Verdict.BLOCK
+
+
+def test_pipe_confusion_blocked():
+    engine = make_engine()
+    decision = engine.check_shell_command("echo x | rm -rf /")
+    assert decision.verdict == Verdict.BLOCK
+
+
+def test_dollar_subshell_blocked():
+    engine = make_engine()
+    decision = engine.check_shell_command("echo $(rm -rf /)")
+    assert decision.verdict == Verdict.BLOCK
+
+
+def test_ifs_whitespace_injection_blocked():
+    engine = make_engine()
+    decision = engine.check_shell_command("rm$IFS-rf$IFS/")
+    assert decision.verdict == Verdict.BLOCK

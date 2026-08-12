@@ -1,7 +1,8 @@
-from src.models import Action, Task, Session, GuardDecision, Verdict, ToolResult, FeedbackResult, ApprovalResult
+from src.models import Action, Task, Session, GuardDecision, Verdict, ToolResult, FeedbackResult, ApprovalResult, GuardRule
 from src.mock_llm import ScenarioMockLLM, ScriptedMockLLM
 from src.harness_core import AgentLoop
 from src.io_interface import SilentIO
+from src.guardrail import GuardEngine
 
 
 class FakeGuard:
@@ -169,3 +170,34 @@ def test_scripted_mock_llm_still_works():
     llm = ScriptedMockLLM(actions)
     result = llm.chat([])
     assert result["action"] == "read_file"
+
+
+def test_scenario_rejection_self_correct():
+    from src.feedback import FeedbackEngine
+    from pathlib import Path
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        ws = Path(tmp)
+        class PathGuard:
+            def check(self, action):
+                if action.tool in ("read_file", "write_file"):
+                    target = action.params.get("path", "")
+                    p = Path(target)
+                    if not p.is_absolute():
+                        p = (ws / p).resolve()
+                    else:
+                        p = p.resolve()
+                    if not p.is_relative_to(ws):
+                        return GuardDecision(verdict=Verdict.BLOCK, matched_rule="path-boundary", reason="out of workspace")
+                return GuardDecision(verdict=Verdict.SAFE)
+        llm = ScenarioMockLLM("rejection_self_correct")
+        io = SilentIO(approval_result=ApprovalResult(approved=False, reason="out of workspace"))
+        agent = AgentLoop(llm=llm, guard=PathGuard(), executor=FakeExecutor(),
+                          feedback=FeedbackEngine(), session_store=FakeSessionStore(), io=io, max_turns=5)
+        task = Task(description="write config")
+        session = Session(session_id="s1", created_at="", updated_at="", task_description="test", conventions=[], tags=[])
+        result = agent.run(task, session)
+        assert result.status == "success"
+        assert len(result.turns) == 1
+        assert result.turns[0].action.tool == "write_file"
+        assert result.turns[0].action.params["path"] == "local_config"
