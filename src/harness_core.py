@@ -26,6 +26,7 @@ class AgentLoop:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": task.description},
         ]
+        json_errors = 0
         for turn_num in range(1, self.max_turns + 1):
             llm_response = self.llm.chat(messages)
             if llm_response.get("action") == "finish":
@@ -33,7 +34,11 @@ class AgentLoop:
             if llm_response.get("action") == "invalid_json":
                 raw = llm_response.get("raw", "")
                 messages.append({"role": "user", "content": f"Your response was not valid JSON. Raw: {raw}\nPlease respond with ONLY valid JSON: {{\"action\": \"...\", \"params\": {{...}}, \"reason\": \"...\"}}"})
+                json_errors += 1
+                if json_errors >= 3:
+                    return TaskResult(status="circuit_breaker", turns=turns, summary=f"连续 {json_errors} 次非 JSON 响应")
                 continue
+            json_errors = 0
             action = self._parse_action(llm_response)
             if action is None:
                 continue
