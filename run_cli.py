@@ -40,6 +40,7 @@ def main():
     parser.add_argument("--strict", action="store_true", help="严格模式")
     parser.add_argument("--max-turns", type=int, default=50, help="最大轮次")
     parser.add_argument("--workspace", type=str, default=".", help="工作目录")
+    parser.add_argument("--verbose", action="store_true", help="显示每轮详情")
     parser.add_argument("command", nargs="?", choices=["credential"], help="子命令")
     parser.add_argument("subcommand", nargs="?", choices=["set", "status", "clear"], help="credential 子命令")
     args = parser.parse_args()
@@ -76,8 +77,25 @@ def main():
 
     session = Session(session_id=args.session or "default", created_at="", updated_at="",
                       task_description=args.task, conventions=[], tags=[args.task])
+
+    if args.verbose:
+        def print_turn(turn):
+            print(f"\n--- Turn {turn.turn_number} ---")
+            print(f"Action: {turn.action.tool}({turn.action.params})")
+            if turn.action.reason:
+                print(f"Reason: {turn.action.reason}")
+            print(f"Guard: {turn.guard_decision.verdict}")
+            if turn.result:
+                out = (turn.result.stdout or turn.result.stderr or "")[:200]
+                print(f"Result: {out}")
+            if turn.feedback:
+                print(f"Feedback: {turn.feedback.category}")
+    else:
+        def print_turn(turn): pass
+
     agent = AgentLoop(llm=llm, guard=guard, executor=executor, feedback=feedback,
-                      session_store=None, io=io, strict_mode=args.strict, max_turns=args.max_turns)
+                      session_store=None, io=io, strict_mode=args.strict, max_turns=args.max_turns,
+                      turn_callback=print_turn)
     task = Task(description=args.task)
     result = agent.run(task, session)
     print(f"\nStatus: {result.status}")
