@@ -20,6 +20,14 @@ class GuardEngine:
                 path_decision = self.validate_path(target)
                 if path_decision.verdict == Verdict.BLOCK:
                     return path_decision
+                fs_rules = [r for r in self.rules if r.action_type == "FileSystem" and r.pattern]
+                for rule in fs_rules:
+                    if re.search(rule.pattern, target):
+                        return GuardDecision(
+                            verdict=Verdict(rule.verdict),
+                            matched_rule=rule.id,
+                            reason=rule.description
+                        )
 
         if action_type == "Shell":
             command = action.params.get("command", "")

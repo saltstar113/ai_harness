@@ -233,3 +233,42 @@ def test_ifs_whitespace_injection_blocked():
     engine = make_engine()
     decision = engine.check_shell_command("rm$IFS-rf$IFS/")
     assert decision.verdict == Verdict.BLOCK
+
+
+def test_filesystem_pattern_rule_checked(tmp_path):
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    (workspace / "system").mkdir()
+    rules = [
+        GuardRule(id="fs-block-etc", action_type="FileSystem", scope="System", risk_level="CRITICAL", verdict="BLOCK", pattern="system", description="block system dir"),
+    ]
+    engine = GuardEngine(rules, workspace)
+    action = Action(tool="read_file", params={"path": "system/config"})
+    decision = engine.check(action)
+    assert decision.verdict == Verdict.BLOCK
+    assert decision.matched_rule == "fs-block-etc"
+
+
+def test_filesystem_warn_rule_checked(tmp_path):
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    (workspace / "config").mkdir()
+    rules = [
+        GuardRule(id="fs-warn", action_type="FileSystem", scope="Workspace", risk_level="MEDIUM", verdict="WARN", pattern="config", description="warn config access"),
+    ]
+    engine = GuardEngine(rules, workspace)
+    action = Action(tool="write_file", params={"path": "config/app.py", "content": "x"})
+    decision = engine.check(action)
+    assert decision.verdict == Verdict.WARN
+    assert decision.matched_rule == "fs-warn"
+
+
+def test_load_guard_rules_yaml_and_check_filesystem(tmp_path):
+    from src.config import load_rules
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    rules = load_rules("guard_rules.yaml")
+    engine = GuardEngine(rules, workspace)
+    action = Action(tool="read_file", params={"path": "/etc/passwd"})
+    decision = engine.check(action)
+    assert decision.verdict == Verdict.BLOCK
