@@ -80,6 +80,10 @@ class AgentLoop:
         conventions = "\n".join(f"- {c['key']}: {c['value']}" for c in session.conventions)
         return (f"You are a coding agent. Available tools: read_file, write_file, execute_shell, run_tests, run_lint.\n"
                 f"Project conventions:\n{conventions or 'None'}\n"
+                'RULES:\n'
+                '- Use write_file to CREATE files BEFORE trying to execute or read them.\n'
+                '- When you get an error feedback, read it carefully and adapt your next action.\n'
+                '- Do NOT repeat the same failing action more than twice.\n'
                 'You MUST respond with ONLY valid JSON, no extra text:\n'
                 '{"action": "tool_name", "params": {"key": "value"}, "reason": "why you chose this action"}\n'
                 'When task is complete: {"action": "finish"}\n'
