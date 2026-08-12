@@ -73,7 +73,7 @@ def main():
         llm = DeepSeekClient(key)
 
     session = Session(session_id=args.session or "default", created_at="", updated_at="",
-                      task_description=args.task, conventions=[], tags=[])
+                      task_description=args.task, conventions=[], tags=[args.task])
     agent = AgentLoop(llm=llm, guard=guard, executor=executor, feedback=feedback,
                       session_store=None, io=io, strict_mode=args.strict, max_turns=args.max_turns)
     task = Task(description=args.task)

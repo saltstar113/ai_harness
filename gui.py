@@ -205,7 +205,7 @@ class HarnessGUI:
                 llm = DeepSeekClient(key)
 
             session = Session(session_id="gui", created_at="", updated_at="",
-                              task_description=task_desc, conventions=[], tags=[])
+                              task_description=task_desc, conventions=[], tags=[task_desc])
             agent = AgentLoop(llm=llm, guard=guard, executor=executor, feedback=feedback,
                               session_store=None, io=self._io, strict_mode=self.strict_var.get(),
                               max_turns=int(self.max_turns_var.get()),

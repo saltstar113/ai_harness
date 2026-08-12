@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from src.models import Action, Task, TaskResult, Session, Turn, Verdict, RiskInfo, ApprovalResult
+from src.session_store import load_session, save_session
 
 class AgentLoop:
     def __init__(self, llm, guard, executor, feedback, session_store,
@@ -17,6 +18,9 @@ class AgentLoop:
 
     def run(self, task: Task, session: Session) -> TaskResult:
         turns = []
+        existing = load_session(session.session_id)
+        if existing and existing.conventions:
+            session.conventions = existing.conventions
         system_prompt = self._build_system_prompt(session)
         messages = [
             {"role": "system", "content": system_prompt},
@@ -60,6 +64,8 @@ class AgentLoop:
             turns.append(turn)
             if self.turn_callback:
                 self.turn_callback(turn)
+            session.updated_at = datetime.now(timezone.utc).isoformat()
+            save_session(session)
             if fb.context_for_llm:
                 messages.append({"role": "user", "content": fb.context_for_llm})
             if not fb.should_retry and fb.category != "SUCCESS":
