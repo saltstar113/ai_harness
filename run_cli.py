@@ -7,7 +7,7 @@ from src.executor import Executor
 from src.feedback import FeedbackEngine
 from src.harness_core import AgentLoop
 from src.io_interface import CliIO
-from src.mock_llm import ScriptedMockLLM
+from src.mock_llm import ScriptedMockLLM, ScenarioMockLLM
 from src.credential import status as cred_status, set_key as cred_set, clear_key as cred_clear
 
 
@@ -68,10 +68,9 @@ def main():
 
     if args.mock:
         if args.scenario:
-            from src.mock_llm import ScenarioMockLLM
             llm = ScenarioMockLLM(args.scenario)
         else:
-            llm = ScriptedMockLLM([Action(tool="read_file", params={"path": "README.md"})])
+            llm = ScenarioMockLLM("governance")
     else:
         from src.credential import get_key
         key = get_key()
