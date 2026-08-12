@@ -4,11 +4,21 @@ class FeedbackEngine:
     def __init__(self):
         self._counters: dict[str, int] = {}
         self._last_category: str | None = None
+        self._last_action: str = ""
+        self._repeat_success: int = 0
 
-    def analyze(self, result: ToolResult) -> FeedbackResult:
+    def analyze(self, result: ToolResult, action_desc: str = "") -> FeedbackResult:
         if result.exit_code == 0:
             self._counters.clear()
             self._last_category = None
+            if action_desc == self._last_action:
+                self._repeat_success += 1
+            else:
+                self._repeat_success = 0
+            self._last_action = action_desc
+            if self._repeat_success >= 3:
+                return FeedbackResult(category="SUCCESS", round=self._repeat_success, should_retry=False,
+                                      context_for_llm=f"[SUCCESS] Task step '{action_desc}' succeeded {self._repeat_success} times. If this step is done, move on to the next step or return finish.")
             return FeedbackResult(category="SUCCESS", round=0, should_retry=False)
 
         category = self._classify(result)

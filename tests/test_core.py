@@ -12,7 +12,7 @@ class FakeExecutor:
         return ToolResult(exit_code=0, stdout="ok")
 
 class FakeFeedback:
-    def analyze(self, result):
+    def analyze(self, result, action_desc=""):
         return FeedbackResult(category="SUCCESS", round=0, should_retry=False)
 
 class FakeSessionStore:

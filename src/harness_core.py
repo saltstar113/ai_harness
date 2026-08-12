@@ -61,7 +61,7 @@ class AgentLoop:
                     if not approval.approved:
                         continue
             result = self.executor.dispatch(action)
-            fb = self.feedback.analyze(result)
+            fb = self.feedback.analyze(result, f"{action.tool}({action.params})")
             turn = Turn(turn_number=turn_num, timestamp=datetime.now(timezone.utc).isoformat(),
                         action=action, guard_decision=guard_decision, approval=approval,
                         result=result, feedback=fb)
