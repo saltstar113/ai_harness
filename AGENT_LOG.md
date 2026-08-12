@@ -163,11 +163,11 @@
 - LINT_ERROR 分类：FeedbackEngine 未识别 lint 错误为特定类别
 
 **留下的 5 个 Important 问题（不阻塞合并）：**
-- session_store 注入但未使用
-- 缺少 scope 过滤
-- 缺少 conventions 模型
-- 重复迭代检测
-- STM 测试缺口
+- ~~session_store 注入但未使用~~ → 已修复（`bc40762`：`load_session()`/`save_session()` 集成到 AgentLoop）
+- ~~缺少 scope 过滤~~ → 已修复（`116ee97`：`check()` 和 `check_shell_command()` 新增 `scope` 参数，4 个新测试）
+- ~~缺少 conventions 模型~~ → 已修复（`bc40762`：`Session.conventions` + `_build_system_prompt()` 注入）
+- ~~重复迭代检测~~ → 已修复（`1aba491`/`4d123eb`/`7ce2f94`：重复成功 5 次强制结束）
+- ~~STM 测试缺口~~ → 已修复（`116ee97`：7 个新测试覆盖 load/save/errors/conventions/search/corrupt/limit）
 
 ---
 
@@ -264,7 +264,7 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试 | 87 passed, 2 skipped（零网络依赖） |
+| 测试 | 98 passed, 2 skipped（零网络依赖） |
 | 文件 | 25 个核心源文件 |
 | Commits | 44 个（含 6 个 merge commit） |
 | Worktree 分支 | 6 个（phase1-infra ~ phase6-io） |

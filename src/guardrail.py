@@ -11,7 +11,7 @@ class GuardEngine:
         self.rules = rules
         self.workspace = workspace.resolve()
 
-    def check(self, action: Action) -> GuardDecision:
+    def check(self, action: Action, scope: str | None = None) -> GuardDecision:
         action_type = self._classify_action_type(action.tool)
 
         if action_type == "FileSystem":
@@ -21,6 +21,8 @@ class GuardEngine:
                 if path_decision.verdict == Verdict.BLOCK:
                     return path_decision
                 fs_rules = [r for r in self.rules if r.action_type == "FileSystem" and r.pattern]
+                if scope:
+                    fs_rules = [r for r in fs_rules if r.scope == scope]
                 for rule in fs_rules:
                     if re.search(rule.pattern, target):
                         return GuardDecision(
@@ -32,11 +34,13 @@ class GuardEngine:
         if action_type == "Shell":
             command = action.params.get("command", "")
             if command:
-                shell_decision = self.check_shell_command(command)
+                shell_decision = self.check_shell_command(command, scope=scope)
                 if shell_decision.verdict != Verdict.SAFE:
                     return shell_decision
 
         candidates = [r for r in self.rules if r.action_type == action_type and not r.pattern]
+        if scope:
+            candidates = [r for r in candidates if r.scope == scope]
         if not candidates:
             return GuardDecision(verdict=Verdict.SAFE, reason="无匹配规则")
 
@@ -78,7 +82,7 @@ class GuardEngine:
             )
         return GuardDecision(verdict=Verdict.SAFE, matched_rule="default", reason="")
 
-    def check_shell_command(self, command: str) -> GuardDecision:
+    def check_shell_command(self, command: str, scope: str | None = None) -> GuardDecision:
         normalized = re.sub(r'\$IFS|\$\{IFS\}', ' ', command)
         try:
             tokens = shlex.split(normalized)
@@ -88,6 +92,8 @@ class GuardEngine:
         cmd_name = tokens[0] if tokens else ""
 
         shell_rules = [r for r in self.rules if r.action_type == "Shell" and r.pattern]
+        if scope:
+            shell_rules = [r for r in shell_rules if r.scope == scope]
         for rule in shell_rules:
             if re.search(rule.pattern, normalized) or re.fullmatch(rule.pattern, cmd_name):
                 return GuardDecision(

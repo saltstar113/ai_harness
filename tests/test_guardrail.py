@@ -272,3 +272,48 @@ def test_load_guard_rules_yaml_and_check_filesystem(tmp_path):
     action = Action(tool="read_file", params={"path": "/etc/passwd"})
     decision = engine.check(action)
     assert decision.verdict == Verdict.BLOCK
+
+
+# === Scope filtering ===
+
+def test_scope_filter_blocks_system_rule():
+    rules = [
+        GuardRule(id="shell-dangerous", action_type="Shell", scope="System", risk_level="CRITICAL", verdict="BLOCK", pattern="rm -rf", description="dangerous"),
+        GuardRule(id="git-force", action_type="Shell", scope="Git", risk_level="HIGH", verdict="BLOCK", pattern="git push.*--force", description="force push"),
+    ]
+    engine = GuardEngine(rules, Path("/tmp"))
+    action = Action(tool="execute_shell", params={"command": "rm -rf /tmp"})
+    assert engine.check(action, scope="System").verdict == Verdict.BLOCK
+    assert engine.check(action, scope="Git").verdict == Verdict.SAFE
+
+
+def test_scope_filter_without_scope_checks_all():
+    rules = [
+        GuardRule(id="shell-dangerous", action_type="Shell", scope="System", risk_level="CRITICAL", verdict="BLOCK", pattern="rm -rf", description="dangerous"),
+        GuardRule(id="git-force", action_type="Shell", scope="Git", risk_level="HIGH", verdict="BLOCK", pattern="git push.*--force", description="force push"),
+    ]
+    engine = GuardEngine(rules, Path("/tmp"))
+    assert engine.check(Action(tool="execute_shell", params={"command": "rm -rf /tmp"})).verdict == Verdict.BLOCK
+    assert engine.check(Action(tool="execute_shell", params={"command": "git push --force"})).verdict == Verdict.BLOCK
+
+
+def test_scope_filter_filesystem_rules():
+    rules = [
+        GuardRule(id="fs-system", action_type="FileSystem", scope="System", risk_level="CRITICAL", verdict="BLOCK", pattern="system", description="block system"),
+        GuardRule(id="fs-workspace", action_type="FileSystem", scope="Workspace", risk_level="MEDIUM", verdict="WARN", pattern="config", description="warn config"),
+    ]
+    engine = GuardEngine(rules, Path("/tmp/ws"))
+    action = Action(tool="read_file", params={"path": "system/app.py"})
+    assert engine.check(action, scope="System").verdict == Verdict.BLOCK
+    assert engine.check(action, scope="Workspace").verdict == Verdict.SAFE
+
+
+def test_scope_filter_check_shell_command():
+    rules = [
+        GuardRule(id="network-warn", action_type="Shell", scope="Network", risk_level="HIGH", verdict="WARN", pattern="curl", description="warn curl"),
+        GuardRule(id="git-block", action_type="Shell", scope="Git", risk_level="HIGH", verdict="BLOCK", pattern="git push.*--force", description="block force push"),
+    ]
+    engine = GuardEngine(rules, Path("/tmp"))
+    assert engine.check_shell_command("curl example.com", scope="Network").verdict == Verdict.WARN
+    assert engine.check_shell_command("curl example.com", scope="Git").verdict == Verdict.SAFE
+    assert engine.check_shell_command("curl example.com").verdict == Verdict.WARN
