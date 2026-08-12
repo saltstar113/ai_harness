@@ -61,7 +61,7 @@ class AgentLoop:
                     if not approval.approved:
                         continue
             result = self.executor.dispatch(action)
-            fb = self.feedback.analyze(result, f"{action.tool}({action.params})")
+            fb = self.feedback.analyze(result, self._action_desc(action))
             turn = Turn(turn_number=turn_num, timestamp=datetime.now(timezone.utc).isoformat(),
                         action=action, guard_decision=guard_decision, approval=approval,
                         result=result, feedback=fb)
@@ -88,6 +88,12 @@ class AgentLoop:
                 '{"action": "tool_name", "params": {"key": "value"}, "reason": "why you chose this action"}\n'
                 'When task is complete: {"action": "finish"}\n'
                 'Do NOT include markdown, backticks, or any text outside the JSON object.')
+
+    def _action_desc(self, action: Action) -> str:
+        p = dict(action.params)
+        p.pop("content", None)
+        p.pop("reason", None)
+        return f"{action.tool}({p})"
 
     def _parse_action(self, response: dict) -> Action | None:
         tool = response.get("action")
