@@ -50,3 +50,18 @@ def test_classify_runtime_error():
     result = ToolResult(exit_code=1, stderr="Traceback (most recent call last):\nTypeError: ...")
     fb = engine.analyze(result)
     assert fb.category == "RUNTIME_ERROR"
+
+
+def test_truncate_large_output():
+    from src.feedback import _truncate
+    huge = "x" * 10000
+    result = _truncate(huge, 100)
+    assert len(result) <= 200
+    assert "truncated" in result
+
+
+def test_feedback_context_truncates_large_stdout():
+    engine = FeedbackEngine()
+    huge_stdout = "A" * 10000
+    fb = engine.analyze(ToolResult(exit_code=1, stderr="error", stdout=huge_stdout))
+    assert len(fb.context_for_llm) < 8000

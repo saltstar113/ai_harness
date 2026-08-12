@@ -1,5 +1,16 @@
 from src.models import ToolResult, FeedbackResult
 
+MAX_CONTEXT_CHARS = 3000
+
+
+def _truncate(text: str, max_chars: int = MAX_CONTEXT_CHARS) -> str:
+    if len(text) <= max_chars:
+        return text
+    head = text[:max_chars // 2]
+    tail = text[-(max_chars // 2):]
+    return f"{head}\n... [truncated {len(text) - max_chars} chars] ...\n{tail}"
+
+
 class FeedbackEngine:
     def __init__(self):
         self._counters: dict[str, int] = {}
@@ -34,7 +45,7 @@ class FeedbackEngine:
         should_retry = round_num < 3
 
         if round_num == 1:
-            context = f"[{category}]\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+            context = f"[{category}]\nstdout:\n{_truncate(result.stdout)}\nstderr:\n{_truncate(result.stderr)}"
             if category == "FILE_NOT_FOUND":
                 context += "\nHINT: Create the file first using write_file tool."
             if category == "BAD_PARAMS":

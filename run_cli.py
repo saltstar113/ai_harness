@@ -17,7 +17,7 @@ class DeepSeekClient:
         self.base_url = "https://api.deepseek.com"
 
     def chat(self, messages: list[dict]) -> dict:
-        import httpx, json
+        import httpx, json, re
         resp = httpx.post(f"{self.base_url}/chat/completions",
                           headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
                           json={"model": "deepseek-chat", "messages": messages, "temperature": 0.0}, timeout=60)
@@ -25,10 +25,36 @@ class DeepSeekClient:
             raise RuntimeError(f"DeepSeek API error {resp.status_code}: {resp.text[:500]}")
         data = resp.json()
         content = data["choices"][0]["message"]["content"]
+        parsed = self._parse_json(content)
+        if parsed:
+            return parsed
+        return {"action": "invalid_json", "raw": content[:300]}
+
+    @staticmethod
+    def _parse_json(text: str) -> dict | None:
+        import json, re
+        for attempt in [text, text.strip()]:
+            try:
+                return json.loads(attempt)
+            except json.JSONDecodeError:
+                pass
+        for pattern in [
+            r'```(?:json)?\s*\n?(.*?)\n?```',
+            r'\{[^{}]*"action"\s*:\s*"[^"]+"[^{}]*\}',
+        ]:
+            m = re.search(pattern, text, re.DOTALL)
+            if m:
+                try:
+                    return json.loads(m.group(1) if '```' in pattern else m.group(0))
+                except json.JSONDecodeError:
+                    pass
+        cleaned = re.sub(r',\s*}', '}', text)
+        cleaned = re.sub(r',\s*]', ']', cleaned)
         try:
-            return json.loads(content)
+            return json.loads(cleaned)
         except json.JSONDecodeError:
-            return {"action": "invalid_json", "raw": content[:300]}
+            pass
+        return None
 
 
 def main():
