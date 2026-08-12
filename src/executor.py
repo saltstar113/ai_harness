@@ -27,13 +27,13 @@ class Executor:
 
     def _read_file(self, params, timeout):
         start = time.time()
-        path = Path(params["path"])
+        path = self.workspace / params["path"]
         content = path.read_text(encoding="utf-8")
         return ToolResult(stdout=content, exit_code=0, duration_ms=(time.time() - start) * 1000)
 
     def _write_file(self, params, timeout):
         start = time.time()
-        path = Path(params.get("path") or params.get("file_path") or params.get("file") or params.get("filepath"))
+        path = self.workspace / (params.get("path") or params.get("file_path") or params.get("file") or params.get("filepath"))
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(params["content"], encoding="utf-8")
         return ToolResult(stdout="OK", exit_code=0, duration_ms=(time.time() - start) * 1000)
