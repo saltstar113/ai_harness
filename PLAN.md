@@ -1,6 +1,6 @@
 # Coding Agent Harness 实现计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 从零构建一个纯 CLI 的 Coding Agent Harness，重点维度为治理（多维度规则引擎 + HITL 状态机），所有核心机制可通过 mock LLM 进行确定性单元测试。
 
@@ -66,13 +66,13 @@ T01 ──→ T02 ──┬─── T04 (Config) ──→ T07→T08→T09→T1
 - Consumes: (none — first task)
 - Produces: `tmp_workspace` fixture (临时目录 Path), `sample_action` fixture, `sample_session` fixture
 
-- [ ] **Step 0: 初始化 Git 仓库**
+- [x] **Step 0: 初始化 Git 仓库**
 
 ```bash
 git init
 ```
 
-- [ ] **Step 1: 创建 `.gitignore`**
+- [x] **Step 1: 创建 `.gitignore`**
 
 ```
 .env
@@ -85,7 +85,7 @@ venv/
 dist/
 ```
 
-- [ ] **Step 2: 创建 `requirements.txt`**
+- [x] **Step 2: 创建 `requirements.txt`**
 
 ```
 httpx>=0.27
@@ -94,7 +94,7 @@ python-dotenv>=1.0
 pyyaml>=6.0
 ```
 
-- [ ] **Step 3: 创建 `pytest.ini`**
+- [x] **Step 3: 创建 `pytest.ini`**
 
 ```ini
 [pytest]
@@ -105,7 +105,7 @@ python_classes = Test*
 python_functions = test_*
 ```
 
-- [ ] **Step 4: 创建 `tests/conftest.py`**
+- [x] **Step 4: 创建 `tests/conftest.py`**
 
 ```python
 import pytest
@@ -135,7 +135,7 @@ def sample_session():
     )
 ```
 
-- [ ] **Step 5: 验证**
+- [x] **Step 5: 验证**
 
 ```bash
 pip install -r requirements.txt
@@ -148,7 +148,7 @@ git check-ignore .env
 ```
 Expected: 输出 `.env`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add .gitignore requirements.txt pytest.ini tests/conftest.py
@@ -170,7 +170,7 @@ git commit -m "chore: project scaffold with pytest and shared fixtures"
 - Consumes: (none beyond stdlib)
 - Produces: `Tool(Enum)`, `Verdict(Enum)`, `FeedbackCategory(Enum)`, `TaskStatus(Enum)`, `Action`, `ToolResult`, `GuardRule`, `GuardDecision`, `RiskInfo`, `ApprovalResult`, `FeedbackResult`, `Turn`, `Task`, `TaskResult`, `Session`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 # tests/test_models.py
@@ -223,14 +223,14 @@ def test_session_creation():
     assert session.decisions == []
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 ```bash
 pytest tests/test_models.py -v
 ```
 Expected: FAIL — `ModuleNotFoundError: No module named 'src.models'`
 
-- [ ] **Step 3: 实现 `src/models.py`**
+- [x] **Step 3: 实现 `src/models.py`**
 
 ```python
 from dataclasses import dataclass, field
@@ -345,14 +345,14 @@ class Session:
     summary: str = ""
 ```
 
-- [ ] **Step 4: 运行验证通过**
+- [x] **Step 4: 运行验证通过**
 
 ```bash
 pytest tests/test_models.py -v
 ```
 Expected: 7 tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/__init__.py src/models.py tests/test_models.py
@@ -373,7 +373,7 @@ git commit -m "feat(T02): define data models (Action, GuardDecision, Session, et
 - Consumes: `src.models.Action`
 - Produces: `ScriptedMockLLM(actions: list[Action])` 类，`chat(messages: list[dict]) -> dict` 方法
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 # tests/test_mock_llm.py
@@ -414,14 +414,14 @@ def test_call_count_tracks_invocations():
     assert llm.call_count == 2
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 ```bash
 pytest tests/test_mock_llm.py -v
 ```
 Expected: FAIL — `ModuleNotFoundError: No module named 'src.mock_llm'`
 
-- [ ] **Step 3: 实现 `src/mock_llm.py`**
+- [x] **Step 3: 实现 `src/mock_llm.py`**
 
 ```python
 class ScriptedMockLLM:
@@ -437,14 +437,14 @@ class ScriptedMockLLM:
         return {"action": action.tool, "params": action.params}
 ```
 
-- [ ] **Step 4: 运行验证通过**
+- [x] **Step 4: 运行验证通过**
 
 ```bash
 pytest tests/test_mock_llm.py -v
 ```
 Expected: 3 tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/mock_llm.py tests/test_mock_llm.py
@@ -466,7 +466,7 @@ git commit -m "feat(T03): implement ScriptedMockLLM with action queue"
 - Consumes: `src.models.GuardRule`
 - Produces: `load_rules(path: str) -> list[GuardRule]`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 # tests/test_config.py
@@ -506,14 +506,14 @@ def test_load_rules_returns_guard_rule_objects():
         assert hasattr(rule, "verdict")
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 ```bash
 pytest tests/test_config.py -v
 ```
 Expected: FAIL
 
-- [ ] **Step 3: 实现 `src/config.py`**
+- [x] **Step 3: 实现 `src/config.py`**
 
 ```python
 import yaml
@@ -574,16 +574,16 @@ def load_rules(path: str) -> list[GuardRule]:
     return rules if rules else BUILTIN_RULES
 ```
 
-- [ ] **Step 4: 创建 `guard_rules.yaml`**（默认规则文件，内容同 BUILTIN_RULES 的 YAML 版本）
+- [x] **Step 4: 创建 `guard_rules.yaml`**（默认规则文件，内容同 BUILTIN_RULES 的 YAML 版本）
 
-- [ ] **Step 5: 运行验证通过**
+- [x] **Step 5: 运行验证通过**
 
 ```bash
 pytest tests/test_config.py -v
 ```
 Expected: 3 tests PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/config.py guard_rules.yaml tests/test_config.py
@@ -604,7 +604,7 @@ git commit -m "feat(T04): implement config loader with builtin fallback rules"
 - Consumes: (none beyond stdlib + python-dotenv)
 - Produces: `get_key() -> str | None`, `set_key()`, `clear_key()`, `status() -> str`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 # tests/test_credential.py
@@ -646,14 +646,14 @@ def test_clear_key_removes_entry(monkeypatch, tmp_path):
     assert "OTHER_VAR=value" in content
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 ```bash
 pytest tests/test_credential.py -v
 ```
 Expected: FAIL
 
-- [ ] **Step 3: 实现 `src/credential.py`**
+- [x] **Step 3: 实现 `src/credential.py`**
 
 ```python
 import os
@@ -689,14 +689,14 @@ def status() -> str:
     return "未配置"
 ```
 
-- [ ] **Step 4: 运行验证通过**
+- [x] **Step 4: 运行验证通过**
 
 ```bash
 pytest tests/test_credential.py -v
 ```
 Expected: 4 tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/credential.py tests/test_credential.py
@@ -717,7 +717,7 @@ git commit -m "feat(T05): implement credential management with getpass"
 - Consumes: `src.models.Session`
 - Produces: `save_session(session: Session)`, `load_session(session_id: str) -> Session`, `search_sessions(keywords: list[str]) -> list[Session]`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 # tests/test_session_store.py
@@ -774,14 +774,14 @@ def test_search_returns_empty_for_no_match(tmp_path, monkeypatch):
     assert len(results) == 0
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 ```bash
 pytest tests/test_session_store.py -v
 ```
 Expected: FAIL
 
-- [ ] **Step 3: 实现 `src/session_store.py`**
+- [x] **Step 3: 实现 `src/session_store.py`**
 
 ```python
 import json
@@ -830,14 +830,14 @@ def search_sessions(keywords: list[str]) -> list[Session]:
     return results
 ```
 
-- [ ] **Step 4: 运行验证通过**
+- [x] **Step 4: 运行验证通过**
 
 ```bash
 pytest tests/test_session_store.py -v
 ```
 Expected: 3 tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/session_store.py tests/test_session_store.py
@@ -858,7 +858,7 @@ git commit -m "feat(T06): implement session store with JSON persistence and keyw
 - Consumes: `src.models.GuardRule`, `src.models.GuardDecision`, `src.models.Action`, `src.models.Verdict`, `src.config.load_rules`
 - Produces: `GuardEngine(rules, workspace)` 类，`check(action: Action) -> GuardDecision` 方法
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 # tests/test_guardrail.py
@@ -917,14 +917,14 @@ def test_unknown_tool_returns_safe():
     assert decision.verdict == Ver.SAFE
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 ```bash
 pytest tests/test_guardrail.py -v
 ```
 Expected: FAIL
 
-- [ ] **Step 3: 实现 `src/guardrail.py`**
+- [x] **Step 3: 实现 `src/guardrail.py`**
 
 ```python
 import re
@@ -975,14 +975,14 @@ class GuardEngine:
         return mapping.get(tool, "Unknown")
 ```
 
-- [ ] **Step 4: 运行验证通过**
+- [x] **Step 4: 运行验证通过**
 
 ```bash
 pytest tests/test_guardrail.py -v
 ```
 Expected: 4 tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/guardrail.py tests/test_guardrail.py
@@ -1003,7 +1003,7 @@ git commit -m "feat(T07): implement GuardEngine skeleton with rule matching"
 - Consumes: `src.guardrail.GuardEngine`
 - Produces: `GuardEngine.validate_path(target: str) -> GuardDecision`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 # 追加到 tests/test_guardrail.py
@@ -1039,14 +1039,14 @@ def test_dot_dot_slash_traversal_blocked(tmp_path):
     assert decision.verdict == Ver.BLOCK
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 ```bash
 pytest tests/test_guardrail.py::test_path_traversal_blocked -v
 ```
 Expected: FAIL — `AttributeError: 'GuardEngine' object has no attribute 'validate_path'`
 
-- [ ] **Step 3: 实现 `validate_path` 方法**
+- [x] **Step 3: 实现 `validate_path` 方法**
 
 ```python
 # 追加到 src/guardrail.py 的 GuardEngine 类中
@@ -1061,14 +1061,14 @@ def validate_path(self, target: str) -> GuardDecision:
     return GuardDecision(verdict=Ver.SAFE, matched_rule="default", reason="")
 ```
 
-- [ ] **Step 4: 运行验证通过**
+- [x] **Step 4: 运行验证通过**
 
 ```bash
 pytest tests/test_guardrail.py -v
 ```
 Expected: 7 tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/guardrail.py tests/test_guardrail.py
@@ -1089,7 +1089,7 @@ git commit -m "feat(T08): add path traversal protection with resolve().is_relati
 - Consumes: `src.guardrail.GuardEngine`
 - Produces: `GuardEngine.check_shell_command(command: str) -> GuardDecision`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 # 追加到 tests/test_guardrail.py
@@ -1114,14 +1114,14 @@ def test_env_prefix_rm_blocked():
     assert decision.verdict == Ver.BLOCK
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 ```bash
 pytest tests/test_guardrail.py::test_sudo_rm_rf_blocked -v
 ```
 Expected: FAIL
 
-- [ ] **Step 3: 实现 `check_shell_command` 方法**
+- [x] **Step 3: 实现 `check_shell_command` 方法**
 
 ```python
 # 追加到 src/guardrail.py 的 GuardEngine 类中
@@ -1147,14 +1147,14 @@ def check_shell_command(self, command: str) -> GuardDecision:
     return GuardDecision(verdict=Ver.SAFE, matched_rule="default", reason="")
 ```
 
-- [ ] **Step 4: 运行验证通过**
+- [x] **Step 4: 运行验证通过**
 
 ```bash
 pytest tests/test_guardrail.py -v
 ```
 Expected: 11 tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/guardrail.py tests/test_guardrail.py
@@ -1175,7 +1175,7 @@ git commit -m "feat(T09): add shell command double-check with shlex + regex"
 - Consumes: `src.guardrail.GuardEngine` (T07-T09)
 - Produces: 完整 `GuardEngine.check(action) -> GuardDecision`（含路径校验和 Shell 校验）
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 # 追加到 tests/test_guardrail.py
@@ -1223,14 +1223,14 @@ def test_parametrize_rules(tool, params, expected_verdict):
     assert decision.verdict == expected_verdict, f"Expected {expected_verdict} for {tool}({params})"
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 ```bash
 pytest tests/test_guardrail.py::test_full_check_integrates_path_validation -v
 ```
 Expected: FAIL — T07 的 `check()` 未集成 `validate_path`
 
-- [ ] **Step 3: 重构 `GuardEngine.check()` 集成全部校验**
+- [x] **Step 3: 重构 `GuardEngine.check()` 集成全部校验**
 
 ```python
 # 修改 src/guardrail.py 的 check() 方法
@@ -1273,14 +1273,14 @@ def check(self, action: Action) -> GuardDecision:
     )
 ```
 
-- [ ] **Step 4: 运行全部测试通过**
+- [x] **Step 4: 运行全部测试通过**
 
 ```bash
 pytest tests/test_guardrail.py -v
 ```
 Expected: 15 tests PASS（覆盖 AC2-AC5）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/guardrail.py tests/test_guardrail.py
@@ -1301,7 +1301,7 @@ git commit -m "feat(T10): integrate full guard state machine with parametrized t
 - Consumes: `src.models.Action`, `src.models.ToolResult`
 - Produces: `Executor(workspace: Path)` 类，`dispatch(action: Action) -> ToolResult` 方法
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 # tests/test_executor.py
@@ -1342,14 +1342,14 @@ def test_shell_timeout(tmp_workspace):
     assert "TIMEOUT" in result.stderr
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 ```bash
 pytest tests/test_executor.py -v
 ```
 Expected: FAIL
 
-- [ ] **Step 3: 实现 `src/executor.py`**
+- [x] **Step 3: 实现 `src/executor.py`**
 
 ```python
 import subprocess
@@ -1423,14 +1423,14 @@ class Executor:
         return self._execute_shell({"command": cmd}, timeout)
 ```
 
-- [ ] **Step 4: 运行验证通过**
+- [x] **Step 4: 运行验证通过**
 
 ```bash
 pytest tests/test_executor.py -v
 ```
 Expected: 5 tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/executor.py tests/test_executor.py
@@ -1451,7 +1451,7 @@ git commit -m "feat(T11): implement executor with tool dispatch and mkdir guaran
 - Consumes: `src.models.ToolResult`, `src.models.FeedbackResult`
 - Produces: `FeedbackEngine` 类，`analyze(result: ToolResult) -> FeedbackResult` 方法
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 # tests/test_feedback.py
@@ -1509,14 +1509,14 @@ def test_classify_runtime_error():
     assert fb.category == "RUNTIME_ERROR"
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 ```bash
 pytest tests/test_feedback.py -v
 ```
 Expected: FAIL
 
-- [ ] **Step 3: 实现 `src/feedback.py`**
+- [x] **Step 3: 实现 `src/feedback.py`**
 
 ```python
 from src.models import ToolResult, FeedbackResult
@@ -1575,14 +1575,14 @@ class FeedbackEngine:
         return "SUCCESS"
 ```
 
-- [ ] **Step 4: 运行验证通过**
+- [x] **Step 4: 运行验证通过**
 
 ```bash
 pytest tests/test_feedback.py -v
 ```
 Expected: 7 tests PASS（覆盖 AC6-AC9）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/feedback.py tests/test_feedback.py
@@ -1603,7 +1603,7 @@ git commit -m "feat(T12): implement feedback engine with circuit breaker"
 - Consumes: `src.models.*`, `src.mock_llm.ScriptedMockLLM`, `src.guardrail.GuardEngine`, `src.executor.Executor`, `src.feedback.FeedbackEngine`, `src.session_store.*`, `src.io_interface.IOInterface`
 - Produces: `AgentLoop` 类，`run(task: Task, session: Session) -> TaskResult` 方法
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 # tests/test_core.py
@@ -1672,14 +1672,14 @@ def test_agent_loop_stops_on_finish():
     assert len(result.turns) == 0
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 ```bash
 pytest tests/test_core.py -v
 ```
 Expected: FAIL — `ModuleNotFoundError`
 
-- [ ] **Step 3: 先创建 `src/io_interface.py`**（T13 依赖的 IO 接口）
+- [x] **Step 3: 先创建 `src/io_interface.py`**（T13 依赖的 IO 接口）
 
 ```python
 from typing import Protocol
@@ -1707,7 +1707,7 @@ class SilentIO:
         return self.approval_result
 ```
 
-- [ ] **Step 4: 实现 `src/harness_core.py`**
+- [x] **Step 4: 实现 `src/harness_core.py`**
 
 ```python
 import uuid
@@ -1814,14 +1814,14 @@ class AgentLoop:
         )
 ```
 
-- [ ] **Step 5: 运行验证通过**
+- [x] **Step 5: 运行验证通过**
 
 ```bash
 pytest tests/test_core.py -v
 ```
 Expected: 2 tests PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/io_interface.py src/harness_core.py tests/test_core.py
@@ -1841,7 +1841,7 @@ git commit -m "feat(T13): implement AgentLoop with DI and 7-step main loop"
 - Consumes: `src.harness_core.AgentLoop` (T13)
 - Produces: 完整 test_core.py（覆盖 AC1, AC7, AC14-AC16）
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 # 追加到 tests/test_core.py
@@ -1920,25 +1920,25 @@ def test_feedback_loop_retries_on_failure():
     assert result.turns[2].feedback.category == "SUCCESS"
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 ```bash
 pytest tests/test_core.py::test_circuit_breaker_halts_loop -v
 ```
 Expected: FAIL — 熔断逻辑可能未正确触发
 
-- [ ] **Step 3: 修复 AgentLoop 确保熔断逻辑正确**
+- [x] **Step 3: 修复 AgentLoop 确保熔断逻辑正确**
 
 检查 `AgentLoop.run()` 中熔断判断的位置和逻辑。确保 `should_retry == False` 且 category != SUCCESS 时立即返回。
 
-- [ ] **Step 4: 运行全部测试通过**
+- [x] **Step 4: 运行全部测试通过**
 
 ```bash
 pytest tests/test_core.py -v
 ```
 Expected: 5 tests PASS（覆盖 AC1, AC7, AC14, AC15, AC16）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/test_core.py
@@ -1960,7 +1960,7 @@ git commit -m "test(T14): add integration tests for circuit breaker and feedback
 - Consumes: `src.io_interface.IOInterface`, `src.harness_core.AgentLoop`, `src.models.*`
 - Produces: `CliIO` 类, `run_cli.py` 入口
 
-- [ ] **Step 1: 实现 `CliIO`**（追加到 `src/io_interface.py`）
+- [x] **Step 1: 实现 `CliIO`**（追加到 `src/io_interface.py`）
 
 ```python
 class CliIO:
@@ -1985,7 +1985,7 @@ class CliIO:
         return ApprovalResult(approved=False, reason=reason)
 ```
 
-- [ ] **Step 2: 实现 `run_cli.py`**
+- [x] **Step 2: 实现 `run_cli.py`**
 
 ```python
 import argparse
@@ -2094,7 +2094,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 3: 写测试**
+- [x] **Step 3: 写测试**
 
 ```python
 # tests/test_cli.py
@@ -2112,14 +2112,14 @@ def test_cli_credential_status():
     assert "已配置" in result.stdout or "未配置" in result.stdout
 ```
 
-- [ ] **Step 4: 运行验证通过**
+- [x] **Step 4: 运行验证通过**
 
 ```bash
 pytest tests/test_cli.py -v
 ```
 Expected: 2 tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/io_interface.py run_cli.py tests/test_cli.py
@@ -2139,7 +2139,7 @@ git commit -m "feat(T15): implement CliIO and run_cli.py entry point"
 - Consumes: `src.models.*`, `src.guardrail.*`, `src.feedback.*`, `src.harness_core.*`, `src.mock_llm.*`, `src.io_interface.*`
 - Produces: `demo.py` 可执行脚本
 
-- [ ] **Step 1: 写 `demo.py`**
+- [x] **Step 1: 写 `demo.py`**
 
 ```python
 """机制演示：在 Mock LLM 下确定性地复现三项行为"""
@@ -2225,14 +2225,14 @@ else:
     sys.exit(1)
 ```
 
-- [ ] **Step 2: 运行验证**
+- [x] **Step 2: 运行验证**
 
 ```bash
 python demo.py
 ```
 Expected: 输出 3 个 `[PASS]`，最终 `All 3 demos passed.`
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add demo.py
@@ -2252,7 +2252,7 @@ git commit -m "feat(T16): implement mechanism demo script (AC17)"
 - Consumes: (none — CI 配置)
 - Produces: GitHub Actions workflow
 
-- [ ] **Step 1: 创建 `.github/workflows/ci.yml`**
+- [x] **Step 1: 创建 `.github/workflows/ci.yml`**
 
 ```yaml
 name: CI
@@ -2280,11 +2280,11 @@ jobs:
         run: pytest -v
 ```
 
-- [ ] **Step 2: 验证**
+- [x] **Step 2: 验证**
 
 推送到 GitHub 后，确认 `unit-test` job 自动触发并 PASS。
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add .github/workflows/ci.yml
@@ -2306,7 +2306,7 @@ git commit -m "ci(T17): add GitHub Actions unit-test workflow"
 - Consumes: (none)
 - Produces: 文档和安装脚本
 
-- [ ] **Step 1: 创建 `install.sh`**
+- [x] **Step 1: 创建 `install.sh`**
 
 ```bash
 #!/bin/bash
@@ -2320,7 +2320,7 @@ echo "Run 'python run_cli.py credential set' to configure your API key."
 echo "Run 'python run_cli.py --help' for usage."
 ```
 
-- [ ] **Step 2: 创建 `install.ps1`**
+- [x] **Step 2: 创建 `install.ps1`**
 
 ```powershell
 python -m venv .venv
@@ -2332,7 +2332,7 @@ Write-Host "Run 'python run_cli.py credential set' to configure your API key."
 Write-Host "Run 'python run_cli.py --help' for usage."
 ```
 
-- [ ] **Step 3: 创建 `README.md`**
+- [x] **Step 3: 创建 `README.md`**
 
 ```markdown
 # Coding Agent Harness
@@ -2417,7 +2417,7 @@ ai_harness/
 - 仅支持 DeepSeek LLM API
 ```
 
-- [ ] **Step 4: 验证**
+- [x] **Step 4: 验证**
 
 ```bash
 chmod +x install.sh
@@ -2430,7 +2430,7 @@ python run_cli.py --help
 ```
 Expected: 正常输出帮助信息
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add README.md install.sh install.ps1
@@ -2463,3 +2463,58 @@ git commit -m "docs(T18): add README, install scripts, and security notes"
 | AC18 | pytest 全绿 | T17 | ✓ |
 | AC19 | CI 通过 | T17 | ✓ |
 | AC20 | 无凭据提交 | T01, T18 | ✓ |
+
+---
+
+## 实现完成记录
+
+> 所有任务由 Superpowers subagent-driven-development 工作流完成。每项注明 commit hash 及对应的 worktree 分支。
+
+| Task | 描述 | Commit | 分支 | 完成日期 |
+|------|------|--------|------|----------|
+| T01 | 项目脚手架 + 测试基础设施 | `66fc7c5` | phase1-infra | 2026-08-09 |
+| T02 | 数据模型 | `66fc7c5` | phase1-infra | 2026-08-09 |
+| T03 | Mock LLM 抽象 | `c70229c` | phase2-base | 2026-08-09 |
+| T04 | 配置加载 | `ddd5663` | phase2-base | 2026-08-09 |
+| T05 | 凭据管理 | `fb818e6` | phase2-base | 2026-08-09 |
+| T06 | 会话存储 | `fb818e6` | phase2-base | 2026-08-09 |
+| T07 | GuardEngine 骨架 | `564c6bd` | phase3-governance | 2026-08-09 |
+| T08 | 路径隔离 | `62a96f6` | phase3-governance | 2026-08-09 |
+| T09 | Shell 双重校验 | `5bf73b6` | phase3-governance | 2026-08-09 |
+| T10 | 护栏状态机集成 | `5f9d8b6` | phase3-governance | 2026-08-09 |
+| T11 | 工具执行器 | `70a23d4` | phase4-executor | 2026-08-09 |
+| T12 | 反馈引擎 | `fd263ea` | phase5-core | 2026-08-09 |
+| T13 | AgentLoop 主循环 | `b30308d` | phase5-core | 2026-08-09 |
+| T14 | 集成测试 | `b918c21` | phase5-core | 2026-08-09 |
+| T15 | CLI 入口 | `38ae1d8` | phase6-io | 2026-08-09 |
+| T16 | 机制演示 demo.py | `903447d` | phase6-io | 2026-08-09 |
+| T17 | CI 配置 | `903447d` | phase6-io | 2026-08-09 |
+| T18 | README + 安装脚本 | `903447d` | phase6-io | 2026-08-09 |
+
+**代码审查后修复（人工修改）：**
+
+| 修复 | Commit | 说明 |
+|------|--------|------|
+| 反馈上下文注入 LLM | `01550a8` | `context_for_llm` 计算了但未注入 messages |
+| YAML 正则转义 | `01550a8` | `guard_rules.yaml` 反斜杠转义错误 |
+| Action 导入错误 | `a3d6e59` | BLOCK 拒绝理由未回灌 |
+| LINT_ERROR 分类 | `a3d6e59` | 线号格式未匹配 |
+
+**GUI 测试辅助（非作业要求）：**
+
+| 功能 | Commit |
+|------|--------|
+| GUI 设计文档 | `6df9b1c` |
+| GUI 实现 | `e193b51` |
+| 会话持久化 | `bc40762` |
+| API Key 输入 | `a3f483e` |
+| 英语提示词 | `9716974` |
+| CLI verbose 模式 | `57b49d8` |
+| 参数名兼容 | `91a984c` ~ `9e78601` |
+| 重复成功检测 | `1aba491` ~ `7ce2f94` |
+| ScenarioMockLLM | `2062295` |
+| 治理场景 | `d33e7b8` ~ `d625567` |
+| 高级治理任务 (4 个) | `8ef1093` ~ `40d6ec3` |
+| 高级鲁棒性任务 (5 个) | `91fea0b` |
+
+**最终测试：87 passed, 2 skipped（零网络依赖）**
