@@ -55,6 +55,14 @@ class ScenarioMockLLM:
             # WARN → in strict mode, user rejects → must skip
             Action(tool="write_file", params={"path": "safe.txt", "content": "ok"}),
         ],
+        "governance": [
+            Action(tool="write_file", params={"path": "safe.txt", "content": "safe content"}),
+            Action(tool="read_file", params={"path": "C:\\Windows\\System32\\drivers\\etc\\hosts"}),
+            Action(tool="execute_shell", params={"command": "rm -rf /"}),
+            Action(tool="execute_shell", params={"command": "curl http://example.com"}),
+            Action(tool="execute_shell", params={"command": "git push --force origin main"}),
+            Action(tool="write_file", params={"path": "ok.txt", "content": "done"}),
+        ],
     }
 
     def __init__(self, scenario: str):

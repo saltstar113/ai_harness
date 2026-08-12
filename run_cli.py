@@ -37,6 +37,7 @@ def main():
     parser.add_argument("--session", type=str, help="会话 ID")
     parser.add_argument("--config", type=str, default="guard_rules.yaml", help="治理规则文件路径")
     parser.add_argument("--mock", action="store_true", help="使用 Mock LLM 模式")
+    parser.add_argument("--scenario", type=str, help="Mock 场景: governance, full_workflow, circuit_breaker, multi_file")
     parser.add_argument("--strict", action="store_true", help="严格模式")
     parser.add_argument("--max-turns", type=int, default=50, help="最大轮次")
     parser.add_argument("--workspace", type=str, default=".", help="工作目录")
@@ -66,7 +67,11 @@ def main():
     io = CliIO()
 
     if args.mock:
-        llm = ScriptedMockLLM([Action(tool="read_file", params={"path": "README.md"})])
+        if args.scenario:
+            from src.mock_llm import ScenarioMockLLM
+            llm = ScenarioMockLLM(args.scenario)
+        else:
+            llm = ScriptedMockLLM([Action(tool="read_file", params={"path": "README.md"})])
     else:
         from src.credential import get_key
         key = get_key()
