@@ -116,7 +116,7 @@ class HarnessGUI:
         self._build_key_row()
 
     def _build_key_row(self):
-        self.key_frame = tk.Frame(self.root, bg=self.COLORS["bg"], padx=10, pady=(0, 10))
+        self.key_frame = tk.Frame(self.root, bg=self.COLORS["bg"], padx=10, pady=10)
         self.key_frame.pack(fill=tk.X)
 
         tk.Label(self.key_frame, text="API Key:", fg=self.COLORS["fg"], bg=self.COLORS["bg"],
@@ -168,7 +168,7 @@ class HarnessGUI:
 
     def _build_turn_area(self):
         self.turn_area_container = tk.Frame(self.root, bg=self.COLORS["bg"])
-        self.turn_area_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+        self.turn_area_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         self.canvas = tk.Canvas(self.turn_area_container, bg=self.COLORS["bg"], highlightthickness=0)
         scrollbar = ttk.Scrollbar(self.turn_area_container, orient=tk.VERTICAL, command=self.canvas.yview)
@@ -343,14 +343,14 @@ class HarnessGUI:
 
         if llm_reason:
             row0 = tk.Frame(frame, bg=self.COLORS["frame_bg"])
-            row0.pack(fill=tk.X, pady=(5, 0))
+            row0.pack(fill=tk.X, pady=5)
             tk.Label(row0, text="Thought:", fg="#569CD6", bg=self.COLORS["frame_bg"],
                      font=("Consolas", 10), width=8, anchor=tk.W).pack(side=tk.LEFT)
             tk.Label(row0, text=llm_reason[:200], fg="#9CDCFE", bg=self.COLORS["frame_bg"],
                      font=("Consolas", 10, "italic"), wraplength=700, anchor=tk.W, justify=tk.LEFT).pack(side=tk.LEFT)
 
         row1 = tk.Frame(frame, bg=self.COLORS["frame_bg"])
-        row1.pack(fill=tk.X, pady=(5, 0))
+        row1.pack(fill=tk.X, pady=5)
         tk.Label(row1, text="Action:", fg="#888888", bg=self.COLORS["frame_bg"],
                  font=("Consolas", 10), width=8, anchor=tk.W).pack(side=tk.LEFT)
         tk.Label(row1, text=action, fg=self.COLORS["fg"], bg=self.COLORS["frame_bg"],
@@ -365,7 +365,7 @@ class HarnessGUI:
                      font=("Consolas", 10), wraplength=700, anchor=tk.W, justify=tk.LEFT).pack(side=tk.LEFT)
 
         row2 = tk.Frame(frame, bg=self.COLORS["frame_bg"])
-        row2.pack(fill=tk.X, pady=(2, 0))
+        row2.pack(fill=tk.X, pady=2)
         tk.Label(row2, text="Result:", fg="#888888", bg=self.COLORS["frame_bg"],
                  font=("Consolas", 10), width=8, anchor=tk.W).pack(side=tk.LEFT)
         r_color = self.COLORS["SUCCESS"] if result_status == "success" else self.COLORS["ERROR"]
@@ -373,7 +373,7 @@ class HarnessGUI:
                  font=("Consolas", 10), wraplength=700, anchor=tk.W, justify=tk.LEFT).pack(side=tk.LEFT)
 
         row3 = tk.Frame(frame, bg=self.COLORS["frame_bg"])
-        row3.pack(fill=tk.X, pady=(2, 0))
+        row3.pack(fill=tk.X, pady=2)
         tk.Label(row3, text="Feedback:", fg="#888888", bg=self.COLORS["frame_bg"],
                  font=("Consolas", 10), width=8, anchor=tk.W).pack(side=tk.LEFT)
         fb_color = self.COLORS["SUCCESS"] if feedback == "SUCCESS" else self.COLORS["ERROR"]
@@ -394,14 +394,14 @@ class HarnessGUI:
 
         tk.Label(frame, text=f"Action: {action.tool}({action.params})",
                  fg=self.COLORS["fg"], bg="#3d1a1a",
-                 font=("Consolas", 10), wraplength=700, anchor=tk.W, justify=tk.LEFT).pack(anchor=tk.W, pady=(5, 0))
+                 font=("Consolas", 10), wraplength=700, anchor=tk.W, justify=tk.LEFT).pack(anchor=tk.W, pady=5)
 
         tk.Label(frame, text=f"Risk: {risk.reason}",
                  fg="#FF9800", bg="#3d1a1a",
-                 font=("Consolas", 10), wraplength=700, anchor=tk.W, justify=tk.LEFT).pack(anchor=tk.W, pady=(2, 0))
+                 font=("Consolas", 10), wraplength=700, anchor=tk.W, justify=tk.LEFT).pack(anchor=tk.W, pady=2)
 
         btn_frame = tk.Frame(frame, bg="#3d1a1a")
-        btn_frame.pack(fill=tk.X, pady=(10, 0))
+        btn_frame.pack(fill=tk.X, pady=10)
 
         def approve():
             self._io.resolve_approval(True, "User approved")
