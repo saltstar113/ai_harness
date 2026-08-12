@@ -72,6 +72,8 @@ class AgentLoop:
             save_session(session)
             if fb.context_for_llm:
                 messages.append({"role": "user", "content": fb.context_for_llm})
+            if fb.round >= 5 and fb.category == "SUCCESS":
+                return TaskResult(status="success", turns=turns, summary=f"Task completed (same action repeated {fb.round}x)")
             if not fb.should_retry and fb.category != "SUCCESS":
                 return TaskResult(status="circuit_breaker", turns=turns, summary=f"熔断于第 {turn_num} 轮")
         return TaskResult(status="success", turns=turns)
