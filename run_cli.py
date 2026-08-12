@@ -20,13 +20,15 @@ class DeepSeekClient:
         import httpx, json
         resp = httpx.post(f"{self.base_url}/chat/completions",
                           headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-                          json={"model": "deepseek-chat", "messages": messages, "temperature": 0.1}, timeout=60)
+                          json={"model": "deepseek-chat", "messages": messages, "temperature": 0.0}, timeout=60)
+        if resp.status_code != 200:
+            raise RuntimeError(f"DeepSeek API error {resp.status_code}: {resp.text[:500]}")
         data = resp.json()
         content = data["choices"][0]["message"]["content"]
         try:
             return json.loads(content)
         except json.JSONDecodeError:
-            return {"action": "finish", "reason": "LLM response not JSON"}
+            return {"action": "invalid_json", "raw": content[:300]}
 
 
 def main():

@@ -30,6 +30,10 @@ class AgentLoop:
             llm_response = self.llm.chat(messages)
             if llm_response.get("action") == "finish":
                 break
+            if llm_response.get("action") == "invalid_json":
+                raw = llm_response.get("raw", "")
+                messages.append({"role": "user", "content": f"Your response was not valid JSON. Raw: {raw}\nPlease respond with ONLY valid JSON: {{\"action\": \"...\", \"params\": {{...}}, \"reason\": \"...\"}}"})
+                continue
             action = self._parse_action(llm_response)
             if action is None:
                 continue
@@ -74,10 +78,12 @@ class AgentLoop:
 
     def _build_system_prompt(self, session: Session) -> str:
         conventions = "\n".join(f"- {c['key']}: {c['value']}" for c in session.conventions)
-        return (f"你是一个 coding agent。可用工具：read_file, write_file, execute_shell, run_tests, run_lint。\n"
-                f"项目约定：\n{conventions or '无'}\n"
-                '返回 JSON 格式：{"action": "tool_name", "params": {...}, "reason": "..."}\n'
-                '任务完成时返回：{"action": "finish"}')
+        return (f"You are a coding agent. Available tools: read_file, write_file, execute_shell, run_tests, run_lint.\n"
+                f"Project conventions:\n{conventions or 'None'}\n"
+                'You MUST respond with ONLY valid JSON, no extra text:\n'
+                '{"action": "tool_name", "params": {"key": "value"}, "reason": "why you chose this action"}\n'
+                'When task is complete: {"action": "finish"}\n'
+                'Do NOT include markdown, backticks, or any text outside the JSON object.')
 
     def _parse_action(self, response: dict) -> Action | None:
         tool = response.get("action")
