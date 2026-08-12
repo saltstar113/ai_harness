@@ -1,292 +1,553 @@
 # AGENT_LOG.md — Coding Agent Harness 开发日志
 
 > AI4SE 期末项目 A · 颜鑫 · 2026-08
-
-## 概述
-
-本项目使用 Superpowers 七步工作流（brainstorming → writing-plans → using-git-worktrees → subagent-driven-development → test-driven-development → requesting-code-review → finishing-a-development-branch），通过 6 个 git worktree 分支并行开发，所有核心机制通过 mock LLM 进行确定性单元测试。
-
-**Superpowers 技能使用统计：**
-- brainstorming: 1 次（3 轮迭代，需求澄清 + 架构决策）
-- writing-plans: 1 次（3 轮迭代，18 个 task 的详细实现计划）
-- using-git-worktrees: 1 次（创建 6 个 worktree 分支）
-- subagent-driven-development: 6 次（每个 worktree 分支一个 subagent）
-- test-driven-development: 贯穿全部 18 个 task
-- requesting-code-review: 1 次（发现 2 Critical + 5 Important）
-- finishing-a-development-branch: 1 次
+> 作业要求：每条记录包含时间戳与 task 编号、触发的 Superpowers 技能、关键 prompt / context 配置、subagent 输出的关键片段或 commit hash、人工干预的内容与理由、学到的教训。
 
 ---
 
-## 日志
+## 2026-08-04 — 项目初始化（T00: 环境准备）
 
-### 2026-08-04 — 项目初始化与 Superpowers 配置
+**技能：** 无（手动操作）
 
-| 时间 | 事件 | Commit |
-|------|------|--------|
-| 晚上 | 初始提交：创建仓库、导入 Superpowers 全部技能文件（55 个文件，9830 行） | `9051452` |
-| 晚上 | 切换至官方 Superpowers plugin 配置 | `b286de4` |
-| 晚上 | 移除手动 .opencode plugins，改用官方配置 | `52bff9c` |
-| 晚上 | 清理 hom_require 目录中无关文件 | `a63f1b2` |
+**关键 prompt/context：** 新建 GitHub 仓库 `saltstar113/ai_harness`，从 GitHub 市场安装 Superpowers 插件。
 
-**关键操作：**
-- 在 `.opencode/plugins/superpowers/` 下部署了 brainstorming、writing-plans、using-git-worktrees、subagent-driven-development、test-driven-development、requesting-code-review、receiving-code-review、finishing-a-development-branch、verification-before-completion、writing-skills、dispatching-parallel-agents、systematic-debugging、executing-plans 等全部技能
-- 作业要求文件（通用要求、A 类项目要求、PROJECT_AGENT_REFERENCE）放入 `hom_require/` 目录
+**Subagent 输出/commit：** `9051452` — 导入 Superpowers 全部技能文件（55 个文件，9830 行），包括 brainstorming、writing-plans、subagent-driven-development、test-driven-development、systematic-debugging 等。`b286de4` — 切换至官方 plugin 配置。`52bff9c` — 清理手动配置。`a63f1b2` — 清理 hom_require 目录。
+
+**人工干预：** 无。
+
+**学到的教训：** Superpowers 技能文件占用大量 repo 空间（近 10k 行），但这些技能是后续开发的核心工作流依赖。作业要求明确禁止使用现成 agent 编排框架（LangChain 等），Superpowers 是属于"方法论文档"而非"框架代码"，不违反约束。
 
 ---
 
-### 2026-08-06 — 需求分析与设计（Brainstorming + Writing-Plans）
+## 2026-08-06 — 需求分析与设计（Brainstorming，3 轮迭代）
 
-详见 [SPEC_PROCESS.md](./SPEC_PROCESS.md)，完整记录了 brainstorming 和 writing-plans 的 3+3 轮迭代过程。
+**技能：** `brainstorming`
 
-**Brainstorming 阶段（3 轮）：**
+**关键 prompt/context：** 向智能体提供三份作业要求文件（通用要求、A 类项目要求、PROJECT_AGENT_REFERENCE）。要求：输出 SPEC 大纲，覆盖 10 项基本要素 + 领域与机制设计章节。
 
-| 时间 | 事件 | 详情 |
-|------|------|------|
-| 上午 | 第 1 轮：大纲输出 + 架构质询 | 智能体阅读三份作业要求后输出 11 章大纲，提出 3 个架构决策问题：反馈闭环粒度（选 C 多轮修正状态机）、记忆方案（选 B 结构化 Session Store）、治理分类体系（选 C 多维度分级） |
-| 上午 | 第 2 轮：核心三章草稿 + 再次质询 | 智能体展示功能规约、系统架构、领域与机制设计三章草稿。我修正了 Shell 匹配逻辑 Bug（`tokens[0] + re.fullmatch` 改为 `re.search + re.fullmatch` 双重校验）、补充了文件写入建图保障、规范化了 MockLLM 设计 |
-| 上午 | 第 3 轮：签字确认 + 生成完整 SPEC | 核心三章确认后生成完整 SPEC.md（11 章，1169 行）。智能体自行发现并修复 2 个问题：实体关系图不一致、REPL 模式矛盾 |
+### 第 1 轮：大纲输出 + 架构质询
 
-**第 2 轮关键决策：**
+**Subagent 输出：** 11 章大纲，完全对齐作业要求。提出 3 个架构决策问题：
 
-| 质询 | 决策 |
-|------|------|
+| 问题 | 选项 | 我的选择 | 理由 |
+|------|------|----------|------|
+| 反馈闭环粒度 | A 简单回灌 / B 结构化分类 / C 多轮修正状态机 | **C** | 结构化分类 + 熔断是确定性代码而非提示词，符合作业 A.4-C 判据 |
+| 记忆方案 | A Flat Scratchpad / B 结构化 Session Store / C 向量化 RAG | **B** | 结构化 JSON 可在 mock LLM 下 100% 可测试 |
+| 治理分类体系 | A 二元 / B 三级 / C 多维度分级 | **C** | 治理是 Main Contribution，多维度规则引擎最能体现工程深度 |
+
+**人工干预：** 选择 C/B/C。无额外修改。
+
+**学到的教训：** 这三个问题定义了我之前没想清楚的关键设计决策。特别是"熔断"机制——此前我只模糊地想过"失败后重试"，但未意识到需要区分"第 1 次全量上下文 → 第 2 次精简 → 第 3 次熔断"的递进策略。
+
+### 第 2 轮：核心三章草稿 + 再次质询
+
+**Subagent 输出：** 功能规约、系统架构、领域与机制设计三章草稿。提出 3 个质询点。
+
+**人工干预：** 修正了 3 个问题：
+
+1. **Shell 命令匹配逻辑 Bug**：智能体初版用 `tokens[0] + re.fullmatch` 匹配。我指出这无法匹配 `rm -rf /` 这类带参数的模式，且会被 `sudo` 前缀绕过。修正为 `re.search(command) or re.fullmatch(pattern, cmd_name)` 双重校验。
+
+2. **文件写入建图保障**：要求在 `write_file` 规约中补充 `target.parent.mkdir(parents=True, exist_ok=True)`，确保写入深层路径时不会因缺少父目录失败。
+
+3. **MockLLM 设计规范化**：要求明确 `ScriptedMockLLM` 采用 `List[Action]` 动作队列注入，`chat()` 按 FIFO 返回，队列耗尽返回 FINISH 信号。
+
+**质询决策：**
+
+| 质询 | 我的决策 |
+|------|----------|
 | WARN 是否跳过审批环节 | 默认自动执行 + 日志记录；`--strict` 命令行开关升格为 HITL |
 | 修正轮次计数单位 | 按"连续同类失败"计数；成功即重置；失败类型变化亦重置 |
 | 是否引入 keyring | 放弃 keyring（回避 WSL/D-Bus 依赖），仅用 `.env` + `getpass` |
 
-**Writing-Plans 阶段（3 轮）：**
+**学到的教训：** 智能体在架构层面表现优秀，但代码细节需要我纠正。它能画出正确的架构图，但代码级别的逻辑漏洞（Shell 匹配的 `sudo` 绕过）需要我来发现和修正。这印证了作业的核心命题：**工程师的价值不在"写出代码"，而在"判断代码是否正确"**。
 
-| 时间 | 事件 | 详情 |
-|------|------|------|
-| 下午 | 第 1 轮：Task 拆解框架 + 策略质询 | 按模块分组输出 18 个 task（7 个 Phase），提出 4 个策略问题：Worktree 粒度（选 C 混合）、治理 task 组织（选 A 自底向上）、测试基础设施（选 A 独立前置）、AC 优先级（选 C 关键路径优先） |
-| 下午 | 第 2 轮：完整 Task 列表细化 + 边界确认 | 每个 task 含目标、涉及文件、实现要点、验证步骤（含失败测试代码）、commit 信息 |
-| 下午 | 第 3 轮：生成 PLAN.md + 质量审查 | 生成完整 PLAN.md（2442 行，18 个 task）。智能体自行发现并修复 3 个问题：`ApprovalResult` 重复定义、导入路径错误、`DeepSeekClient` 缺失 |
+### 第 3 轮：签字确认 + 生成完整 SPEC.md
 
-**冷启动验证（§4.5 自我验证）：**
+**Subagent 输出：** 完整 SPEC.md（11 章，1169 行）。智能体自行发现并修复 2 个问题：
+- 实体关系图 `Session 1 ──── * Turn` 与 `Session` dataclass 矛盾 → 修正为 `Session 1 ──── * Error`
+- v1.0 范围决策中声称支持 REPL 模式，但 CLI 规约未定义 → 修正为"仅 `--task` 单次模式"
 
-| 时间 | 事件 | Commit |
-|------|------|--------|
-| 下午 | 使用全新 agent 仅凭 SPEC + PLAN 实现 T01-T02，暴露 3 个缺陷 | `a3f7fbf` |
-| 下午 | 修复：`GuardDecision.verdict` 类型 `str` → `Verdict` 枚举 | `a3f7fbf` |
-| 下午 | 修复：PLAN T01 新增 `git init` 步骤 | `daa47ab` |
-| 下午 | 低优先级：pytest 未安装（agent 未执行 `pip install` 步骤） | 无需修改文档 |
+**人工干预：** 无。这两处是智能体自行发现的。
 
-**冷启动验证暴露的 3 个问题：**
-
-| # | 问题 | 根因 | 严重性 |
-|---|------|------|--------|
-| 1 | `GuardDecision.verdict` 声明为 `str` 但代码示例使用 `Ver.BLOCK` | SPEC 类型声明与 PLAN 代码示例不一致 | 中 |
-| 2 | `git check-ignore .env` 失败：目录不是 Git 仓库 | PLAN 缺少 `git init` 步骤 | 高 |
-| 3 | `pytest` 未安装 | agent 未按顺序执行 `pip install`，非文档缺陷 | 低 |
-
-**关键决策汇总：**
-- 放弃 keyring 库，仅用 `.env` + `getpass`（规避 WSL 无 GUI 环境 D-Bus 风险）
-- 护栏采用路径隔离 + Shell 双重校验（shlex 词法解析 + 正则模式匹配）
-- 凭据威胁模型：防护 Git 泄漏和终端历史，不防护操作系统级攻击
-- 反馈闭环：第 1 次全量错误上下文 → 第 2 次精简范围提示 → 第 3 次熔断并暂停等待人工介入
-- 治理分类：操作类型 × 风险等级 × 作用域 三维矩阵，YAML 配置驱动
+**学到的教训：** SPEC 自审（Spec Self-Review）机制有效。智能体在生成完整文档后自行检查一致性，发现并修复了 2 个矛盾点。这种"自己检查自己"的纪律在单人项目中尤为珍贵。
 
 ---
 
-### 2026-08-06/07 — 规约修正 + Phase 1-2 基础设施
+## 2026-08-06 — 实现计划（Writing-Plans，3 轮迭代）
 
-| 时间 | 事件 | Worktree | Commit |
-|------|------|----------|--------|
-| 下午 | 根据冷启动验证结果更新 SPEC 和 PLAN | master | `c70229c` |
-| 下午 | T01-T02: 脚手架 + 数据模型 | phase1-infra | `66fc7c5` |
-| 晚上 | T03: Mock LLM（ScriptedMockLLM FIFO 队列） | phase2-base | `c70229c` |
-| 晚上 | T04: 配置加载（含 BUILTIN_RULES 降级） | phase2-base | `ddd5663` |
-| 晚上 | T05-T06: 凭据管理 + 会话存储 | phase2-base | `fb818e6` |
+**技能：** `writing-plans`
 
-**Subagent 策略：** T03, T04, T05, T06 为 4 个并行独立 task，由一个 subagent 在 phase2-base 分支中串行完成。
+**关键 prompt/context：** SPEC.md 作为输入，要求输出细粒度 task 列表，每个 task 包含目标、文件、实现要点、验证步骤（含失败测试代码）、commit 信息。
 
-**关键工艺：**
-- `BUILTIN_RULES` 硬编码在 `config.py` 中，YAML 文件缺失时自动降级，确保核心机制不依赖配置文件
-- Mock LLM 设计为 FIFO 队列，完全不读取对话上下文，确保测试的确定性
+### 第 1 轮：Task 拆解框架 + 策略质询
 
----
+**Subagent 输出：** 18 个 task 的框架（7 个 Phase），提出 4 个策略问题：
 
-### 2026-08-07 — Phase 3 治理维度（主要贡献）
+| 问题 | 我的选择 | 理由 |
+|------|----------|------|
+| Worktree 粒度（A 每 task / B 每 Phase / C 混合） | **C 混合** | 治理和核心循环独立 worktree，其余 Phase 合并 |
+| 治理 task 组织（A 自底向上 / B 自顶向下 / C TDD） | **A 自底向上** | 每个子组件独立可测，T10 集成时已有扎实基础 |
+| 测试基础设施（A 独立前置 / B 各模块自带 / C 折中） | **A 独立前置** | 共享 fixture 避免治理模块 4 个 task 的重复代码 |
+| AC 优先级（A 编号顺序 / B 模块分组 / C 关键路径优先） | **C 关键路径优先** | 最早在 Phase 5 就能看到端到端闭环 |
 
-| 时间 | 事件 | Worktree | Commit |
-|------|------|----------|--------|
-| 上午 | T07: GuardEngine 骨架 + 规则匹配 | phase3-governance | `564c6bd` |
-| 上午 | T08: 路径隔离（resolve + is_relative_to） | phase3-governance | `62a96f6` |
-| 上午 | T09: Shell 双重校验（shlex + regex） | phase3-governance | `5bf73b6` |
-| 上午 | T10: 护栏状态机集成（23 个参数化测试） | phase3-governance | `5f9d8b6` |
+### 第 2 轮：完整 Task 列表细化
 
-**Subagent 策略：** T07→T08→T09→T10 为严格串行依赖，由一个 subagent 在 phase3-governance 分支中完成。
+**Subagent 输出：** 18 个 task 的完整拆解，每个 task 含目标、涉及文件、实现要点、验证步骤（含失败测试的具体代码）、commit 信息。确认：Task 粒度合适、Worktree 分配合理、无需显式重构步骤。
 
-**关键工艺：**
-- `validate_path()` 使用 `Path.resolve()` 解析软链接，防止符号链接绕过
-- `check_shell_command()` 使用 `shlex.split()` 词法解析 + 正则双重校验，防止 `sudo`、`env` 等前缀绕过
-- 护栏规则：SAFE/WARN/BLOCK 三级判决，多规则匹配时取最高优先级
+### 第 3 轮：生成 PLAN.md + 质量审查
+
+**Subagent 输出：** 完整 PLAN.md（2442 行）。智能体自行发现并修复 3 个问题：
+1. `ApprovalResult` 在 `models.py` 和 `io_interface.py` 中重复定义 → 去重
+2. T14 测试从 `src.io_interface` 导入 `RiskInfo`（实际在 `src.models`） → 修正导入路径
+3. `run_cli.py` 引用 `DeepSeekClient` 但无 task 实现 → 补充薄封装实现
+
+**学到的教训：** 写作计划期间智能体发现的 3 个问题验证了"先写计划再实现"的价值——这些问题如果在实现阶段才发现，会导致跨分支的返工。PLAN 的质量审查机制是投资回报率最高的环节。
 
 ---
 
-### 2026-08-07 — Phase 4-6 核心循环
+## 2026-08-06 — 冷启动验证（§4.5 自我验证）
 
-| 时间 | 事件 | Worktree | Commit |
-|------|------|----------|--------|
-| 下午 | T11: 工具执行器（5 个工具 + mkdir 保障） | phase4-executor | `70a23d4` |
-| 下午 | T12: 反馈引擎（7 种分类 + 熔断） | phase5-core | `fd263ea` |
-| 下午 | T13: AgentLoop 主循环（依赖注入 + 7 步） | phase5-core | `b30308d` |
-| 下午 | T14: 集成测试 | phase5-core | `b918c21` |
-| 下午 | T15: CLI 入口 + DeepSeekClient | phase6-io | `38ae1d8` |
-| 晚上 | T16-T18: demo.py + CI + README | phase6-io | `903447d` |
+**技能：** 无（使用与主开发智能体**不同**的 agent，全新会话）
 
-**Subagent 策略：** T11 独立 subagent → T12-T14 串行 subagent → T15-T18 串行 subagent。
+**关键 prompt/context：** 仅提供 SPEC.md + PLAN.md，不提供任何 brainstorming 对话历史。要求：从 PLAN 选 1–2 个 task 自主推进，遇到不确定之处即暂停询问。
 
-**关键工艺：**
-- AgentLoop 通过构造函数依赖注入所有外部依赖（llm, guard, executor, feedback, io），测试时替换为 mock/stub
-- 反馈引擎：SUCCESS 重置计数器，3 次同类失败触发熔断（circuit_breaker）
-- CLI 通过 `--mock` 开关切换 MockLLM/DeepSeekClient，零修改
+**Subagent 行为：** Agent 依次完成 T01-T05，共出现 3 次暂停：
 
----
+| 暂停点 | Agent 行为 | 分析 |
+|--------|-----------|------|
+| T02 命名 | "PLAN 里写 `Ver`，SPEC 用 `Verdict`，不一致。我暂停等你确认。" | Agent 正确识别了文档不一致，选择了暂停而非猜测 |
+| T01 验证 | `git check-ignore .env` 报错：`fatal: not a git repository` | 记录为 blocker，等待用户决策 |
+| T01 验证 | `pytest --collect-only` 报错：pytest 未安装 | 记录为 blocker |
 
-### 2026-08-07 — 代码审查与修复
+**Subagent 产出片段：** Agent 的 T03 实现存在一个 off-by-one bug：
 
-| 时间 | 事件 | Commit |
-|------|------|--------|
-| 晚上 | 代码审查 | requesting-code-review |
-| 晚上 | 修复 Critical: 反馈上下文注入 LLM | `01550a8` |
-| 晚上 | 修复 Critical: YAML 正则转义（`C:\\Windows\\` → `C:\Windows\`） | `01550a8` |
-| 晚上 | 修复: Action 导入错误 + BLOCK 拒绝回灌 + LINT_ERROR 分类 | `a3d6e59` |
+```python
+# Agent 初版（有 bug）
+def chat(self, messages):
+    self.call_count += 1            # 先递增
+    if self.call_count > len(self.queue):
+        return {"action": "finish"}
+    return self.to_response(self.queue[self.call_count - 1])  # 后减一
 
-**2 个 Critical Bug：**
-1. `src/harness_core.py`: `context_for_llm` 已计算但未注入 LLM messages，导致反馈闭环失效
-2. `guard_rules.yaml`: `C:\\Windows\\` 反斜杠转义后变成 `C:\Windows\`，正则匹配失败
+# Agent 修复版（2 次迭代后）
+def chat(self, messages):
+    if self.call_count >= len(self.queue):
+        return {"action": "finish"}
+    action = self.queue[self.call_count]
+    self.call_count += 1            # 后递增
+    return self.to_response(action)
+```
 
-**3 个 Important Bug：**
-- `src/models.py`: `Action` 导入路径错误
-- BLOCK 拒绝回灌：执行被拒绝后未将反馈注入下一轮 LLM 上下文
-- LINT_ERROR 分类：FeedbackEngine 未识别 lint 错误为特定类别
+**人工干预：** 回复"统一用 Verdict，不额外加兼容别名"。Agent 据此实现。
 
-**留下的 5 个 Important 问题（不阻塞合并）：**
-- ~~session_store 注入但未使用~~ → 已修复（`bc40762`：`load_session()`/`save_session()` 集成到 AgentLoop）
-- ~~缺少 scope 过滤~~ → 已修复（`116ee97`：`check()` 和 `check_shell_command()` 新增 `scope` 参数，4 个新测试）
-- ~~缺少 conventions 模型~~ → 已修复（`bc40762`：`Session.conventions` + `_build_system_prompt()` 注入）
-- ~~重复迭代检测~~ → 已修复（`1aba491`/`4d123eb`/`7ce2f94`：重复成功 5 次强制结束）
-- ~~STM 测试缺口~~ → 已修复（`116ee97`：7 个新测试覆盖 load/save/errors/conventions/search/corrupt/limit）
+**学到的教训：** 冷启动暴露的 3 个缺陷中，前 2 个是**真正的文档缺陷**——它们在主开发 session 中不会暴露，因为主 agent 和我在 brainstorming 过程中积累了共享的隐性上下文。核心教训：(1) 类型声明和代码示例必须一致；(2) 环境依赖必须显式声明；(3) 冷启动测试是最接近"同侪评审"的机制。详见 SPEC_PROCESS.md 第 6-7 章。
 
 ---
 
-### 2026-08-09 — GUI 测试辅助
+## 2026-08-06/07 — Phase 1-2 基础设施（T01-T06）
 
-| 时间 | 事件 | Commit |
-|------|------|--------|
-| 上午 | GUI 设计文档（Tkinter，零新依赖） | `6df9b1c` |
-| 上午 | GUI 实现（逐轮展示 + HITL 审批） | `e193b51` |
+**技能：** `subagent-driven-development` + `test-driven-development`
 
-**说明：** GUI 为个人调试测试工具，非作业要求。
+**关键 prompt/context：** 向 subagent 提供的 task brief 包含：PLAN.md 中对应 task 的完整描述、涉及文件列表、预期实现要点、TDD 验证步骤（含失败测试的具体代码）。要求：先写测试（红）→ 最小实现（绿）→ commit。
+
+**Worktree 策略：** 两个 worktree 并行：
+- `phase1-infra`：T01-T02（串行）
+- `phase2-base`：T03-T06（4 个独立 task，由一个 subagent 串行完成）
+
+### T01: 项目脚手架
+
+**Commit：** `66fc7c5`
+
+**Subagent 输出：** 创建 `.gitignore`、`requirements.txt`、`pytest.ini`、`tests/conftest.py`（含 `tmp_workspace` 和 `sample_action` 等 fixture）。
+
+**人工干预：** 无。
+
+### T02: 数据模型
+
+**Commit：** `66fc7c5`
+
+**Subagent 输出：** `src/models.py`（12 个 dataclass + 4 个 enum），`tests/test_models.py`（7 个测试）。
+
+**关键代码片段：**
+```python
+class Verdict(Enum):
+    SAFE = "SAFE"
+    WARN = "WARN"
+    BLOCK = "BLOCK"
+
+@dataclass
+class GuardDecision:
+    verdict: Verdict
+    matched_rule: str = "default"
+    reason: str = ""
+```
+
+**人工干预：** 无。Agent 按 PLAN 和冷启动验证结果统一使用 `Verdict`。
+
+### T03: Mock LLM 抽象
+
+**Commit：** `c70229c`
+
+**Subagent 输出：** `src/mock_llm.py`（`ScriptedMockLLM` 类，FIFO 动作队列），`tests/test_mock_llm.py`。
+
+**关键设计决策：** Mock LLM 完全不读取对话上下文，仅按 FIFO 返回预定义动作。确保测试的确定性——移除 LLM 后每个机制仍可通过单元测试验证。
+
+**人工干预：** 无。
+
+### T04: 配置加载
+
+**Commit：** `ddd5663`
+
+**Subagent 输出：** `src/config.py`（`load_rules()` + `BUILTIN_RULES` 硬编码降级），`tests/test_config.py`。
+
+**关键设计决策：** `BUILTIN_RULES` 硬编码确保 YAML 文件缺失时核心机制不依赖配置文件。
+
+**人工干预：** 无。
+
+### T05-T06: 凭据管理 + 会话存储
+
+**Commit：** `fb818e6`
+
+**Subagent 输出：** `src/credential.py`（set/status/clear，getpass 隐式输入，status 不回显明文），`src/session_store.py`（save/load/search，JSON 文件存储），对应测试。
+
+**人工干预：** 无。
+
+**学到的教训（Phase 1-2 整体）：** 4 个并行独立 task 由一个 subagent 串行完成是高效的——因为 task 间无依赖，subagent 可以连续交付而不需要切换上下文。但前提是 PLAN 足够详细：每个 task 的接口边界、测试用例、预期行为都必须明确，否则 subagent 容易偏离。
 
 ---
 
-### 2026-08-12 — 真实 API 测试与系统提示词优化
+## 2026-08-07 — Phase 3 治理维度（T07-T10，主要贡献）
 
-| 时间 | 事件 | Commit |
-|------|------|--------|
-| 上午 | 英语提示词（DeepSeek 对英文 JSON 指令更稳定） | `9716974` |
-| 上午 | CLI verbose 模式 | `57b49d8` |
-| 上午 | 参数名兼容（file_path, file, filepath） | `91a984c` ~ `9e78601` |
-| 上午 | 重复成功循环检测（5 次后强制结束） | `1aba491` ~ `7ce2f94` |
-| 上午 | 会话持久化接入 AgentLoop | `bc40762` |
-| 上午 | GUI API Key 输入框 | `a3f483e` |
+**技能：** `subagent-driven-development` + `test-driven-development`
+
+**关键 prompt/context：** 向 subagent 提供 PLAN.md 中 T07-T10 的完整描述。强调 strict serial dependency（T07→T08→T09→T10），要求每个 task 独立 commit 且通过测试后才进入下一个。
+
+**Worktree：** `phase3-governance`
+
+### T07: GuardEngine 骨架
+
+**Commit：** `564c6bd`
+
+**Subagent 输出：** `src/guardrail.py` — `GuardEngine` 类，`check()` 方法按 action_type 路由到对应校验逻辑，多规则匹配取最高优先级。
+
+**关键代码片段：**
+```python
+VERDICT_PRIORITY = {Verdict.BLOCK: 3, Verdict.WARN: 2, Verdict.SAFE: 1}
+
+class GuardEngine:
+    def check(self, action: Action) -> GuardDecision:
+        # 1. 分类 action type
+        # 2. 匹配规则（pattern 优先）
+        # 3. 无 pattern 规则取最高优先级
+        # 4. 返回 GuardDecision(verdict, matched_rule, reason)
+```
+
+### T08: 路径隔离
+
+**Commit：** `62a96f6`
+
+**Subagent 输出：** `validate_path()` 方法，使用 `Path.resolve().is_relative_to()` 进行物理路径校验。
+
+**关键代码片段：**
+```python
+def validate_path(self, target: str) -> GuardDecision:
+    target_path = Path(target)
+    if not target_path.is_absolute():
+        resolved = (self.workspace / target_path).resolve()
+    else:
+        resolved = target_path.resolve()
+    if not resolved.is_relative_to(self.workspace):
+        return GuardDecision(verdict=Verdict.BLOCK, ...)
+    return GuardDecision(verdict=Verdict.SAFE, ...)
+```
+
+### T09: Shell 双重校验
+
+**Commit：** `5bf73b6`
+
+**Subagent 输出：** `check_shell_command()` 方法，`shlex.split()` 词法解析 + 正则模式匹配双重校验。
+
+**关键代码片段：**
+```python
+def check_shell_command(self, command: str) -> GuardDecision:
+    try:
+        tokens = shlex.split(normalized)
+    except ValueError:
+        return GuardDecision(verdict=Verdict.BLOCK, reason="命令解析失败")
+    for rule in shell_rules:
+        if re.search(rule.pattern, normalized) or re.fullmatch(rule.pattern, cmd_name):
+            return GuardDecision(verdict=Verdict(rule.verdict), ...)
+    joined = shlex.join(tokens)
+    for rule in shell_rules:
+        if re.search(rule.pattern, joined):
+            return GuardDecision(verdict=Verdict(rule.verdict), ...)
+```
+
+### T10: 状态机集成
+
+**Commit：** `5f9d8b6`
+
+**Subagent 输出：** 完整状态机 + 23 个参数化测试（覆盖 BLOCK/WARN/SAFE 三类动作 + 路径越界 + sudo 绕过 + shell 命令）。
+
+**人工干预：** 无。
+
+**学到的教训：** 自底向上的 TDD（子组件独立可测 → 最后集成）在治理模块中效果显著。每个子组件（路径校验、Shell 校验）在 T10 集成时已有扎实的测试覆盖，23 个参数化测试一次性通过。这验证了"先写测试再实现"的纪律——subagent 在明确的目标（测试通过）下不会偏离。
+
+---
+
+## 2026-08-07 — Phase 4-6 核心循环（T11-T18）
+
+**技能：** `subagent-driven-development` + `test-driven-development`
+
+**Worktree 策略：** 三个 worktree 并行：
+- `phase4-executor`：T11（单 task）
+- `phase5-core`：T12-T14（严格串行）
+- `phase6-io`：T15-T18（串行）
+
+### T11: 工具执行器
+
+**Commit：** `70a23d4`
+
+**Subagent 输出：** `src/executor.py` — 5 个工具（read_file/write_file/execute_shell/run_tests/run_lint），dispatch 路由，mkdir 保障，environ 白名单，原子写入回滚。
+
+**关键代码片段：**
+```python
+class Executor:
+    def dispatch(self, action: Action) -> ToolResult:
+        handler = self.tools.get(action.tool)
+        if not handler:
+            return ToolResult(exit_code=-2, stderr=f"未知工具: {action.tool}")
+        return handler(**action.params)
+```
+
+### T12: 反馈引擎
+
+**Commit：** `fd263ea`
+
+**Subagent 输出：** `src/feedback.py` — `FeedbackEngine` 类，7 种分类（COMPILE_ERROR/TEST_FAILURE/LINT_ERROR/RUNTIME_ERROR/TIMEOUT/SUCCESS/UNKNOWN_ERROR），3 次熔断，成功重置计数器。
+
+**关键设计：**
+```python
+# Round 1: 失败 → 注入完整错误上下文
+# Round 2: 再次失败 → 注入精简提示（仅 category + 关键错误行）
+# Round 3: 仍失败 → 熔断 → HITL
+```
+
+### T13: AgentLoop 主循环
+
+**Commit：** `b30308d`
+
+**Subagent 输出：** `src/harness_core.py` — `AgentLoop` 类，依赖注入（llm, guard, executor, feedback, session_store, io），7 步流程，反馈回灌，invalid_json 熔断。
+
+**关键代码片段：**
+```python
+class AgentLoop:
+    def __init__(self, llm, guard, executor, feedback, session_store, io=None, ...):
+        # 依赖注入：测试时 llm=MockLLM(), io=SilentIO()
+        # 生产时 llm=DeepSeekClient(), io=CliIO()
+```
+
+### T14: 集成测试
+
+**Commit：** `b918c21`
+
+**Subagent 输出：** `tests/test_core.py` — 5 个集成测试覆盖完整流程、熔断、反馈回灌、guardrail 拦截。
+
+### T15: CLI 入口
+
+**Commit：** `38ae1d8`
+
+**Subagent 输出：** `run_cli.py` — 命令行解析（--task/--session/--config/--mock/--strict），`DeepSeekClient`，JSON 容错解析（Markdown 提取 + 尾逗号修复）。
+
+### T16-T18: demo.py + CI + README
+
+**Commit：** `903447d`
+
+**Subagent 输出：** `demo.py`（三项机制演示）、`.github/workflows/test.yml`、`README.md`、`install.sh`/`install.ps1`。
+
+**人工干预：** 无。
+
+**学到的教训（Phase 4-6 整体）：** 依赖注入模式让测试变得极其简单——`AgentLoop` 注入 `ScriptedMockLLM` 和 `SilentIO` 后，所有核心流程可在零网络依赖下通过单元测试验证。CLI 的 `--mock` 开关让这个切换对用户透明。
+
+---
+
+## 2026-08-07 — 代码审查与修复
+
+**技能：** `requesting-code-review`
+
+**关键 prompt/context：** 要求审查全部代码的正确性、安全性、完整性。审查范围：所有 src/ 和 tests/ 文件。
+
+**审查发现：**
+
+| 严重性 | 问题 | 位置 | 根因 |
+|--------|------|------|------|
+| Critical | 反馈上下文未注入 LLM messages | `harness_core.py:73` | `context_for_llm` 已计算但未拼接到 `messages` 列表，导致反馈闭环完全失效 |
+| Critical | YAML 正则转义错误 | `guard_rules.yaml` | `C:\\Windows\\` 在 YAML 解析后变成 `C:\Windows\`，正则匹配失败 |
+| Important | Action 导入路径错误 | `models.py` | 循环导入导致运行时崩溃 |
+| Important | BLOCK 拒绝后未回灌 | `harness_core.py` | 执行被拒绝后拒绝理由未注入下一轮 LLM 上下文 |
+| Important | LINT_ERROR 未分类 | `feedback.py` | lint 行号格式未匹配正则，被归入 UNKNOWN_ERROR |
+
+**修复 commit：** `01550a8`（2 Critical），`a3d6e59`（3 Important）
+
+**人工干预：** 全部 5 个修复都是人工定位和修改的。Subagent 的代码审查输出了问题列表和修复建议，但实际的 patch 由我（用户）编写。
+
+**学到的教训：** 代码审查是 AI 协作的"安全网"——subagent 擅长写代码，但容易在反馈闭环的边界条件上犯错。特别是"反馈上下文已计算但未注入"这个 bug，在单测中不易暴露（因为测试直接检查 messages），只有在端到端流程中才被发现。这验证了"代码审查不可跳过"的纪律。
+
+**遗留问题后续修复：** 原始审查报告还列出了 5 个 Important 问题（session_store 未使用、scope 过滤缺失、conventions 模型缺失、重复迭代检测、STM 测试缺口）。这些在后续开发中逐步修复：`bc40762`（session_store 集成 + conventions）、`beb2d6a`（scope 过滤 + STM 测试）、`1aba491`/`7ce2f94`（重复成功检测）。
+
+---
+
+## 2026-08-09 — GUI 测试辅助（非作业要求）
+
+**技能：** 无（手动开发）
+
+**Commit：** `6df9b1c`（GUI 设计文档），`e193b51`（GUI 实现）
+
+**Subagent 输出：** Tkinter GUI，逐轮展示 AgentLoop 运行状态，HITL 审批可视化。
+
+**人工干预：** 无。GUI 是个人调试工具，非作业要求，完全由 subagent 实现。
+
+---
+
+## 2026-08-12 — 真实 API 测试与系统提示词优化
+
+**技能：** 无（手动调试）
+
+**关键 prompt/context：** 使用真实 DeepSeek API 运行 `run_cli.py`，观察 LLM 行为。
+
+**发现的问题与修复：**
+
+| 问题 | 修复 | Commit | 人工干预内容 |
+|------|------|--------|-------------|
+| DeepSeek 对中文提示词 JSON 格式执行不稳定 | 改为英文提示词 | `9716974` | 人工定位：中文提示词下 LLM 经常输出非 JSON 格式或错误字段名 |
+| 无法看到 LLM 的中间输出 | 添加 CLI verbose 模式 | `57b49d8` | 人工设计：`--verbose` 标志显示每轮完整消息 |
+| LLM 使用 `file_path`/`file`/`filepath` 而非 `path` | Executor 兼容多种参数名 | `91a984c` ~ `9e78601` | 人工定位：DeepSeek 的 JSON 输出参数名不稳定，需要代码侧兼容 |
+| LLM 成功后陷入重复循环（如连续重写同一个文件） | 重复动作检测 + 5 次后强制结束 | `1aba491` ~ `7ce2f94` | 人工设计：`_action_desc()` 排除 content 后检测重复，5 次连续成功则结束 |
+
+**英文提示词关键片段：**
+```
+You are a coding agent. Available tools: read_file, write_file, execute_shell, run_tests, run_lint.
+You MUST respond with ONLY valid JSON, no extra text:
+{"action": "tool_name", "params": {"key": "value"}, "reason": "why you chose this action"}
+When task is complete: {"action": "finish"}
+```
+
+**学到的教训：** DeepSeek 对英文提示词的 JSON 格式执行稳定性显著优于中文。LLM 在成功完成任务后容易陷入"重复成功循环"——它不会主动说"我完成了"，而是继续做看似有用的修改。这需要 harness 侧的强制结束机制来补偿 LLM 的"不会停"缺陷。
+
+---
+
+## 2026-08-12 — 场景化 MockLLM 与测试增强
+
+**技能：** `test-driven-development`
+
+**Commit：** `2062295`，`d33e7b8`，`d625567`
+
+**Subagent 输出：** `ScenarioMockLLM` 类，支持 6 个预定义场景（完整工作流、护栏拦截、熔断、多文件、文件未找到、严格模式），8 个场景测试。
 
 **关键发现：**
-- DeepSeek 对中文提示词 JSON 格式执行不稳定，英文提示词显著改善
-- LLM 在成功完成任务后容易陷入重复循环（如连续重写同一个文件），添加了重复动作检测和强制结束机制
-- LLM 使用的参数名（`file_path`, `file`, `filepath`）与代码期望的 `path` 不一致，Executor 需要兼容多种参数名
-
----
-
-### 2026-08-12 — 场景化 MockLLM 与测试增强
-
-| 时间 | 事件 | Commit |
-|------|------|--------|
-| 上午 | ScenarioMockLLM（6 场景 + 7 测试） | `2062295` |
-| 上午 | 治理场景 + CLI --scenario 标志 | `d33e7b8` ~ `d625567` |
-| 上午 | 修复 executor 工作区路径（相对路径改为 workspace/path） | `2062295` |
-
-**关键发现：**
-- `read_file`/`write_file` 使用 `Path(params["path"])` 相对 CWD，应改为 `self.workspace / params["path"]`
+- `read_file`/`write_file` 使用 `Path(params["path"])` 相对 CWD → 应改为 `self.workspace / params["path"]`
 - 默认 Mock 模式改为治理场景，不再硬编码 `read_file("README.md")`
 
----
-
-### 2026-08-12/13 — 4 个高级治理任务
-
-| 时间 | 事件 | Commit |
-|------|------|--------|
-| 上午 | Task 1: 软链接逃逸（2 测试，Windows 需管理员权限） | `8ef1093` |
-| 上午 | Task 2: Shell 混淆拦截（`$IFS` 注入修复 + 5 测试） | `8ef1093` |
-| 上午 | Task 3: 拒绝回灌自修正（场景 + 测试） | `8ef1093` |
-| 上午 | Task 4: 超时熔断（已有测试） | `8ef1093` |
-| 上午 | 修复: Filesystem 规则 pattern 从未被检查（死代码） | `40d6ec3` |
-
-**关键发现：**
-- `$IFS` 注入是真实漏洞：`rm$IFS-rf$IFS/` 绕过了正则匹配，修复为 `normalize.replace('$IFS', ' ')`
-- `guard_rules.yaml` 的 `fs-delete-system` 规则从未被检查：代码只匹配 Shell 动作的 pattern，FileSystem 动作的 pattern 被跳过
-- 路径隔离已使用 `Path.resolve()`，软链接攻击在代码层面已防护（Windows 上需管理员权限创建软链接）
+**人工干预：** 修复 executor 工作区路径问题。这是真实 API 测试中暴露的 bug——子进程的 CWD 与 workspace 不一致导致路径解析错误。
 
 ---
 
-### 2026-08-13 — 5 个高级鲁棒性任务
+## 2026-08-12/13 — 4 个高级治理任务
 
-| 时间 | 事件 | Commit |
-|------|------|--------|
-| 下午 | Task 1: 环境变量隔离（白名单 + 输出脱敏，2 测试） | `91fea0b` |
-| 下午 | Task 2: 死循环熔断（已有 circuit_breaker） | `91fea0b` |
-| 下午 | Task 3: 输出截断（3000 chars 头尾采样，2 测试） | `91fea0b` |
-| 下午 | Task 4: JSON 容错解析（Markdown 提取 + 尾逗号修复，6 测试） | `91fea0b` |
-| 下午 | Task 5: 原子写入回滚（`ast.parse` 校验 + 备份恢复，2 测试） | `91fea0b` |
+**技能：** `test-driven-development`
 
-**关键发现：**
-- 子进程继承了全部父进程环境变量，LLM 可直接读取 `DEEPSEEK_API_KEY`，修复为白名单环境变量
-- 超大输出（如 `cat large_file.log`）直接发送给 LLM 会溢出上下文窗口，添加 3000 chars 截断
-- JSON 解析器过于脆弱，只接受完美 JSON，添加了 Markdown 代码块提取、尾逗号修复、正则兜底
-- 文件写入无语法校验，修复为 `ast.parse` 校验 + 自动回滚
+**Commit：** `8ef1093`，`40d6ec3`
 
----
+**Subagent 输出：**
 
-### 2026-08-13 — 遗留问题修复
+| Task | 内容 | 关键发现 |
+|------|------|----------|
+| 1. 软链接逃逸 | 2 个测试（Windows 跳过） | 路径隔离已使用 `Path.resolve()`，软链接攻击在代码层面已防护 |
+| 2. Shell 混淆拦截 | `$IFS` 注入修复 + 5 个测试 | **`$IFS` 注入是真实漏洞**：`rm$IFS-rf$IFS/` 绕过了原有正则匹配，修复为 `normalize.replace('$IFS', ' ')` |
+| 3. 拒绝回灌自修正 | 场景 + 测试 | HITL 拒绝后 LLM 应提出替代方案，通过场景测试验证 |
+| 4. 超时熔断 | 已有测试覆盖 | 无需新增代码 |
 
-| 时间 | 事件 | Commit |
-|------|------|--------|
-| 下午 | 修复 scope 过滤：`check()` 和 `check_shell_command()` 新增 `scope` 参数，4 个新测试 | `beb2d6a` |
-| 下午 | 修复 STM 测试缺口：7 个新测试覆盖 load/save/errors/conventions/search/corrupt/limit | `beb2d6a` |
-| 下午 | 测试从 87 → 98 passed | `beb2d6a` |
+**Filesystem 死代码修复：** `40d6ec3` — `guard_rules.yaml` 的 `fs-delete-system` 规则**从未被检查**：代码只匹配 Shell 动作的 pattern，FileSystem 动作的 pattern 被跳过。修复后 Filesystem pattern 规则被正确检查，新增 3 个测试验证。
 
-**关键工艺：**
-- `check(action, scope=None)` 可选参数保持向后兼容，不传 scope 时全量匹配
-- STM 测试覆盖：非存在 session 返回 None、errors 字段保存、conventions dict 格式、task description 搜索、corrupt JSON 容错、5 结果上限、全字段完整性
+**学到的教训：** `$IFS` 注入是 Shell 校验中最隐蔽的绕过方式——它不改变命令语义，只是去掉了空格。`normalize.replace('$IFS', ' ')` 修复极其简单，但发现它需要意识到 Shell 变量的注入能力。Filesystem 死代码暴露了"代码审查只覆盖了 Shell 路径，未检查 FileSystem 路径"的盲区。
 
 ---
 
-### 2026-08-13 — 文档完善
+## 2026-08-13 — 5 个高级鲁棒性任务
 
-| 时间 | 事件 | Commit |
-|------|------|--------|
-| 下午 | 补充 AGENT_LOG 缺失的早期内容（2026-08-04 项目初始化、2026-08-06 需求分析），修正日期错误 | `116ee97` |
-| 下午 | PLAN.md 更新测试数 87→98，补充 scope/STM 修复记录 | `360246b` |
-| 下午 | SPEC_PROCESS.md 新增第 7 章：冷启动 Agent 行为分析（3 次暂停提问、5 个 Task 产出评估、Spec 写错 vs Agent 读错分析、修订前后关键 Diff、off-by-one 自修复记录） | `360246b` |
+**技能：** `test-driven-development`
 
-**SPEC_PROCESS.md 补充内容：**
-- 7.1：冷启动 Agent 对话摘要 — Agent 依次完成 T01-T05，在 T02 命名不一致处暂停提问，在 T03 自修复 off-by-one bug
-- 7.2：缺陷分析 — 明确标注缺陷 1/2 是"spec 写错"（类型声明不一致、缺少 git init），缺陷 3 是"agent 读错"（未按顺序执行 pip install）
-- 7.3：修订前后 Diff — 两条实际 diff：`verdict: str` → `verdict: Verdict`、PLAN T01 新增 Step 0 `git init`
-- 7.4：Agent 的 off-by-one 自修复 — `call_count` 先递增后减一导致跳过动作，Agent 自行发现并通过 2 次迭代修复
+**Commit：** `91fea0b`
+
+**Subagent 输出：**
+
+| Task | 内容 | 新测试 | 关键发现 |
+|------|------|--------|----------|
+| 1. 环境变量隔离 | 白名单过滤 + 输出脱敏 | 2 | 子进程继承全部父进程环境变量，LLM 可直接读取 `DEEPSEEK_API_KEY` |
+| 2. 死循环熔断 | 已有 circuit_breaker | 0 | 3 次同类失败触发熔断，已有测试覆盖 |
+| 3. 输出截断 | 3000 chars 头尾采样 | 2 | 超大输出直接发送给 LLM 会溢出上下文窗口 |
+| 4. JSON 容错解析 | Markdown 提取 + 尾逗号修复 + 正则兜底 | 6 | LLM 输出的 JSON 经常被 Markdown 代码块包裹或含尾逗号 |
+| 5. 原子写入回滚 | `ast.parse` 语法校验 + 备份恢复 | 2 | 文件写入无语法校验，写入无效 Python 代码后无法恢复 |
+
+**环境变量白名单机制：**
+```python
+_ALLOWED_ENV = {"PATH", "HOME", "USER", "TEMP", "TMP", "PYTHONPATH", "VIRTUAL_ENV", "CWD"}
+```
+
+**JSON 容错解析流水线：**
+```python
+# 1. 提取 Markdown 代码块（如果被包裹）
+# 2. 修复尾逗号
+# 3. 正则提取 JSON 对象
+# 4. json.loads()
+```
+
+**学到的教训：** 5 个鲁棒性任务中，环境变量泄漏和 JSON 容错是最有价值的修复。子进程继承环境变量是 Python 的默认行为，容易被忽略。JSON 容错解析则直接决定了 LLM 的可用性——如果 LLM 输出一个被 Markdown 包裹的 JSON 就直接崩溃，用户会认为是"产品坏了"而非"LLM 输出格式不对"。
 
 ---
 
-### 2026-08-13 — 最终交付
+## 2026-08-13 — 遗留问题修复
 
-| 时间 | 事件 | Commit |
+**技能：** 无（手动修复）
+
+**Commit：** `beb2d6a`
+
+**修复内容：**
+
+| 问题 | 修复 | 新测试 |
 |------|------|--------|
-| 下午 | 更新 PLAN.md 补充所有 18 个 task 的 commit hash | `ed2a925` |
-| 下午 | 创建 AGENT_LOG.md（完整开发日志） | `ed2a925` |
-| 下午 | 6 个 PR 描述补充 Subagent 标注 + 人工修改说明 | API PATCH |
-| 下午 | 推送 master 至 GitHub | `ed2a925` |
+| scope 过滤缺失 | `check()` 和 `check_shell_command()` 新增 `scope` 参数 | 4 个 |
+| STM 测试缺口 | 7 个新测试覆盖 load/save/errors/conventions/search/corrupt/limit | 7 个 |
+
+**scope 过滤设计：**
+```python
+def check(self, action: Action, scope: str | None = None) -> GuardDecision:
+    # scope=None → 全量匹配（向后兼容）
+    # scope="System" → 只匹配 scope 为 System 的规则
+```
+
+**测试结果：** 87 → 98 passed, 2 skipped
+
+**人工干预：** 全部修复由人工完成。scope 过滤的接口设计（可选参数保持向后兼容）是人工决策，subagent 可能倾向于破坏性变更。
+
+---
+
+## 2026-08-13 — 文档完善与最终交付
+
+**技能：** 无（手动编写）
+
+**Commit：** `116ee97`（AGENT_LOG 补充），`360246b`（PLAN 更新 + SPEC_PROCESS 补充），`540186d`（AGENT_LOG 最终更新）
+
+**文档完善内容：**
+
+| 文件 | 补充内容 |
+|------|----------|
+| AGENT_LOG.md | 补充 2026-08-04 早期内容、修正日期错误、新增 scope/STM 和冷启动分析记录 |
+| PLAN.md | 测试数 87→98，补充 scope/STM 修复记录 |
+| SPEC_PROCESS.md | 新增第 7 章：冷启动 Agent 对话摘要、缺陷分析、修订 Diff、off-by-one 自修复 |
+| HANDOFF.md | 新对话快速对齐上下文，避免重复提问 |
+
+**PR 状态：** 6 个 PR 描述已通过 API 补充 Subagent 标注 + 人工修改说明。
 
 ---
 
@@ -295,15 +556,21 @@
 | 指标 | 数值 |
 |------|------|
 | 测试 | 98 passed, 2 skipped（零网络依赖） |
-| 文件 | 25 个核心源文件 |
-| Commits | 47 个（含 6 个 merge commit） |
+| 源文件 | 25 个核心文件 |
+| Commits | 49 个（含 6 个 merge commit） |
 | Worktree 分支 | 6 个（phase1-infra ~ phase6-io） |
 | PR | 6 个（全部 open，含 Subagent 标注） |
 | 测试覆盖 | 治理 33 个，反馈 9 个，执行器 9 个，场景 8 个，JSON 解析 6 个，核心 5 个，等 |
 
 **Superpowers 反思：**
-- TDD 在 AI 协作下是放大器而非阻碍：先写测试让 subagent 有明确的目标，减少了"偏离主题"的几率
-- subagent-driven 工作流的关键在于 task 颗粒度：太大的 task 导致 subagent 偏离，太小的 task 产生过多分支
-- SPEC/PLAN 质量直接影响实现质量：冷启动验证暴露的 3 个缺陷验证了"规约不清导致 subagent 偏离"的假设
-- 凭据与分发要求迫使想清楚了一台全新机器从零运行的完整流程
-- brainstorming 的 3 轮追问迫使在每个设计决策上有明确立场，SPEC_PROCESS.md 记录的 5 条 AI 建议被推翻修正体现了"工程师的价值不在写出代码，而在判断代码是否正确"
+
+| 维度 | 反思 |
+|------|------|
+| TDD 在 AI 协作中 | 是放大器而非阻碍。先写测试让 subagent 有明确的目标，减少了"偏离主题"的几率。但测试质量需要人工审查——subagent 覆盖 happy path 但可能遗漏边界条件 |
+| Subagent 颗粒度 | 太大的 task 导致 subagent 偏离（如 T13 AgentLoop 包含过多逻辑），太小的 task 产生过多分支管理开销。18 个 task 的粒度是合适的 |
+| SPEC/PLAN 质量 | 直接影响实现质量。冷启动验证暴露的 3 个缺陷验证了"规约不清导致 subagent 偏离"的假设 |
+| 凭据与分发 | 迫使想清楚了一台全新机器从零运行的完整流程——从 `git init` 到 `pip install` 到 `credential set` |
+| Brainstorming 价值 | 3 轮追问迫使在每个设计决策上有明确立场。5 条 AI 建议被推翻修正（keyring 否决、Shell 匹配逻辑修正、WARN 行为修改、REPL 范围移除、修正轮次计数方式）体现了"工程师的价值不在写出代码，而在判断代码是否正确" |
+| 冷启动验证 | 单人项目中最接近"同侪评审"的机制，暴露的不是"代码写错了"，而是"你没写下来的假设" |
+| 代码审查 | 不可跳过。2 Critical + 5 Important 问题的发现验证了"即使是 AI 写的代码也需要人工审查"的纪律 |
+| 真实 API 测试 | 揭示 LLM 行为的不可预测性（参数名不稳定、重复成功循环、中文提示词不稳定），这些在 mock 测试中无法覆盖 |
