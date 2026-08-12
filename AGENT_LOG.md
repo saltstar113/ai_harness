@@ -249,6 +249,36 @@
 
 ---
 
+### 2026-08-13 — 遗留问题修复
+
+| 时间 | 事件 | Commit |
+|------|------|--------|
+| 下午 | 修复 scope 过滤：`check()` 和 `check_shell_command()` 新增 `scope` 参数，4 个新测试 | `beb2d6a` |
+| 下午 | 修复 STM 测试缺口：7 个新测试覆盖 load/save/errors/conventions/search/corrupt/limit | `beb2d6a` |
+| 下午 | 测试从 87 → 98 passed | `beb2d6a` |
+
+**关键工艺：**
+- `check(action, scope=None)` 可选参数保持向后兼容，不传 scope 时全量匹配
+- STM 测试覆盖：非存在 session 返回 None、errors 字段保存、conventions dict 格式、task description 搜索、corrupt JSON 容错、5 结果上限、全字段完整性
+
+---
+
+### 2026-08-13 — 文档完善
+
+| 时间 | 事件 | Commit |
+|------|------|--------|
+| 下午 | 补充 AGENT_LOG 缺失的早期内容（2026-08-04 项目初始化、2026-08-06 需求分析），修正日期错误 | `116ee97` |
+| 下午 | PLAN.md 更新测试数 87→98，补充 scope/STM 修复记录 | `360246b` |
+| 下午 | SPEC_PROCESS.md 新增第 7 章：冷启动 Agent 行为分析（3 次暂停提问、5 个 Task 产出评估、Spec 写错 vs Agent 读错分析、修订前后关键 Diff、off-by-one 自修复记录） | `360246b` |
+
+**SPEC_PROCESS.md 补充内容：**
+- 7.1：冷启动 Agent 对话摘要 — Agent 依次完成 T01-T05，在 T02 命名不一致处暂停提问，在 T03 自修复 off-by-one bug
+- 7.2：缺陷分析 — 明确标注缺陷 1/2 是"spec 写错"（类型声明不一致、缺少 git init），缺陷 3 是"agent 读错"（未按顺序执行 pip install）
+- 7.3：修订前后 Diff — 两条实际 diff：`verdict: str` → `verdict: Verdict`、PLAN T01 新增 Step 0 `git init`
+- 7.4：Agent 的 off-by-one 自修复 — `call_count` 先递增后减一导致跳过动作，Agent 自行发现并通过 2 次迭代修复
+
+---
+
 ### 2026-08-13 — 最终交付
 
 | 时间 | 事件 | Commit |
@@ -266,7 +296,7 @@
 |------|------|
 | 测试 | 98 passed, 2 skipped（零网络依赖） |
 | 文件 | 25 个核心源文件 |
-| Commits | 44 个（含 6 个 merge commit） |
+| Commits | 47 个（含 6 个 merge commit） |
 | Worktree 分支 | 6 个（phase1-infra ~ phase6-io） |
 | PR | 6 个（全部 open，含 Subagent 标注） |
 | 测试覆盖 | 治理 33 个，反馈 9 个，执行器 9 个，场景 8 个，JSON 解析 6 个，核心 5 个，等 |
