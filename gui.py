@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk
 import threading
 import queue
 from datetime import datetime, timezone
@@ -91,11 +91,11 @@ class HarnessGUI:
 
         self.mode_var = tk.StringVar(value="mock")
         tk.Radiobutton(frame, text="Mock", variable=self.mode_var, value="mock",
-                       bg=self.COLORS["bg"], fg=self.COLORS["fg"],
+                       command=self._on_mode_change, bg=self.COLORS["bg"], fg=self.COLORS["fg"],
                        selectcolor=self.COLORS["bg"], activebackground=self.COLORS["bg"],
                        activeforeground=self.COLORS["fg"], font=("Consolas", 10)).pack(side=tk.LEFT)
         tk.Radiobutton(frame, text="API", variable=self.mode_var, value="api",
-                       bg=self.COLORS["bg"], fg=self.COLORS["fg"],
+                       command=self._on_mode_change, bg=self.COLORS["bg"], fg=self.COLORS["fg"],
                        selectcolor=self.COLORS["bg"], activebackground=self.COLORS["bg"],
                        activeforeground=self.COLORS["fg"], font=("Consolas", 10)).pack(side=tk.LEFT)
 
@@ -113,12 +113,65 @@ class HarnessGUI:
                        selectcolor=self.COLORS["bg"], activebackground=self.COLORS["bg"],
                        activeforeground=self.COLORS["fg"], font=("Consolas", 10)).pack(side=tk.LEFT)
 
-    def _build_turn_area(self):
-        container = tk.Frame(self.root, bg=self.COLORS["bg"])
-        container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+        self._build_key_row()
 
-        self.canvas = tk.Canvas(container, bg=self.COLORS["bg"], highlightthickness=0)
-        scrollbar = ttk.Scrollbar(container, orient=tk.VERTICAL, command=self.canvas.yview)
+    def _build_key_row(self):
+        self.key_frame = tk.Frame(self.root, bg=self.COLORS["bg"], padx=10, pady=(0, 10))
+        self.key_frame.pack(fill=tk.X)
+
+        tk.Label(self.key_frame, text="API Key:", fg=self.COLORS["fg"], bg=self.COLORS["bg"],
+                 font=("Consolas", 10)).pack(side=tk.LEFT, padx=(0, 5))
+
+        self.key_entry = tk.Entry(self.key_frame, width=60, font=("Consolas", 10),
+                                  bg=self.COLORS["input_bg"], fg=self.COLORS["fg"],
+                                  insertbackground=self.COLORS["fg"], relief=tk.FLAT, show="*")
+        self.key_entry.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.key_btn = tk.Button(self.key_frame, text="Save", command=self._save_key,
+                                 bg=self.COLORS["button_bg"], fg=self.COLORS["button_fg"],
+                                 font=("Consolas", 9), relief=tk.FLAT, padx=8, pady=1)
+        self.key_btn.pack(side=tk.LEFT, padx=(0, 5))
+
+        self.key_status = tk.Label(self.key_frame, text="", fg=self.COLORS["fg"],
+                                   bg=self.COLORS["bg"], font=("Consolas", 9))
+        self.key_status.pack(side=tk.LEFT)
+
+        self._load_key()
+        self.key_frame.pack_forget()
+
+    def _load_key(self):
+        from src.credential import get_key
+        key = get_key()
+        if key:
+            self.key_entry.delete(0, tk.END)
+            self.key_entry.insert(0, key[:8] + "..." + key[-4:])
+            self.key_status.config(text="(已保存)", fg="#4CAF50")
+        else:
+            self.key_status.config(text="(未设置)", fg="#FF9800")
+
+    def _save_key(self):
+        raw = self.key_entry.get()
+        if raw and "..." not in raw:
+            from dotenv import set_key
+            set_key(".env", "DEEPSEEK_API_KEY", raw)
+            self.key_status.config(text="(已保存)", fg="#4CAF50")
+            self.key_entry.delete(0, tk.END)
+            self.key_entry.insert(0, raw[:8] + "..." + raw[-4:])
+        else:
+            self.key_status.config(text="Key unchanged", fg="#FF9800")
+
+    def _on_mode_change(self):
+        if self.mode_var.get() == "api":
+            self.key_frame.pack(fill=tk.X, before=self.turn_area_container)
+        else:
+            self.key_frame.pack_forget()
+
+    def _build_turn_area(self):
+        self.turn_area_container = tk.Frame(self.root, bg=self.COLORS["bg"])
+        self.turn_area_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+
+        self.canvas = tk.Canvas(self.turn_area_container, bg=self.COLORS["bg"], highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.turn_area_container, orient=tk.VERTICAL, command=self.canvas.yview)
         self.turn_frame = tk.Frame(self.canvas, bg=self.COLORS["bg"])
 
         self.turn_frame.bind("<Configure>",
@@ -199,7 +252,7 @@ class HarnessGUI:
                 from src.credential import get_key
                 key = get_key()
                 if not key:
-                    self._queue.put(("error", "No API key configured. Run: python run_cli.py credential set"))
+                    self._queue.put(("error", "No API key configured. Enter key above and click Save."))
                     return
                 from run_cli import DeepSeekClient
                 llm = DeepSeekClient(key)
@@ -260,18 +313,19 @@ class HarnessGUI:
         action_text = f"{turn.action.tool}({turn.action.params})"
         verdict_text = str(turn.guard_decision.verdict)
         reason_text = turn.guard_decision.reason or "—"
-        result_text = turn.result.output[:200] if turn.result.output else "—"
-        result_status = "success" if turn.result.success else "error"
+        result_text = (turn.result.stdout or turn.result.stderr or "")[:300] if turn.result else "—"
+        result_status = "success" if turn.result and turn.result.exit_code == 0 else "error"
         fb_text = turn.feedback.category if turn.feedback else "—"
+        llm_reason = turn.action.reason or ""
 
         self._add_turn_frame(
             action_text, verdict_text, reason_text,
             result_text, result_status, fb_text,
-            turn.turn_number
+            turn.turn_number, llm_reason
         )
         self.turns_label.config(text=f"Turns: {turn.turn_number}")
 
-    def _add_turn_frame(self, action, verdict, verdict_reason, result, result_status, feedback, turn_num=0):
+    def _add_turn_frame(self, action, verdict, verdict_reason, result, result_status, feedback, turn_num=0, llm_reason=""):
         frame = tk.Frame(self.turn_frame, bg=self.COLORS["frame_bg"], padx=10, pady=8,
                          highlightbackground="#444444", highlightthickness=1)
         frame.pack(fill=tk.X, padx=5, pady=3)
@@ -286,6 +340,14 @@ class HarnessGUI:
         verdict_badge = tk.Label(header, text=f" {verdict} ", bg=v_color[0], fg=v_color[1],
                                  font=("Consolas", 9, "bold"))
         verdict_badge.pack(side=tk.RIGHT)
+
+        if llm_reason:
+            row0 = tk.Frame(frame, bg=self.COLORS["frame_bg"])
+            row0.pack(fill=tk.X, pady=(5, 0))
+            tk.Label(row0, text="Thought:", fg="#569CD6", bg=self.COLORS["frame_bg"],
+                     font=("Consolas", 10), width=8, anchor=tk.W).pack(side=tk.LEFT)
+            tk.Label(row0, text=llm_reason[:200], fg="#9CDCFE", bg=self.COLORS["frame_bg"],
+                     font=("Consolas", 10, "italic"), wraplength=700, anchor=tk.W, justify=tk.LEFT).pack(side=tk.LEFT)
 
         row1 = tk.Frame(frame, bg=self.COLORS["frame_bg"])
         row1.pack(fill=tk.X, pady=(5, 0))
