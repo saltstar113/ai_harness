@@ -164,3 +164,7 @@ ai_harness/
 - **LLM 供应商**：仅支持 DeepSeek LLM API（接口抽象预留了多 LLM 扩展性）
 - **Shell 兼容性**：命令执行依赖系统 shell（Linux/macOS: `/bin/sh`, Windows: `cmd.exe`）
 - **交互模式**：不支持 REPL 交互模式（仅 `--task` 单次任务模式）
+
+## 线上部署
+
+本项目为纯 CLI 工具，不提供 WebUI 接口。分发通过源码压缩包和 Docker 容器两种形态完成（见上方「分发」章节）。GUI（`gui.py`）为 Tkinter 桌面调试工具，非 Web 应用。
