@@ -119,6 +119,15 @@ docker run -it --rm -v $(pwd)/workspace:/workspace ai_harness credential set
 
 ```
 ai_harness/
+├── docs/                    # 设计文档与交付物
+│   ├── SPEC.md              # 设计文档（11 章）
+│   ├── PLAN.md              # 实现计划（18 个 task）
+│   ├── SPEC_PROCESS.md      # 规约生成过程文档
+│   ├── AGENT_LOG.md         # 开发日志
+│   ├── REFLECTION.md        # 反思报告
+│   ├── HANDOFF.md           # 项目上下文（新对话对齐）
+│   ├── PROJECT_AGENT_REFERENCE.md  # Agent 参考文档
+│   └── requirements/        # 作业要求文件
 ├── src/                    # 核心源码
 │   ├── models.py           # 数据模型（12 dataclass + 4 enum）
 │   ├── guardrail.py        # 治理引擎（SAFE/WARN/BLOCK 状态机）
@@ -131,15 +140,18 @@ ai_harness/
 │   ├── credential.py       # 凭据管理（.env + getpass）
 │   └── io_interface.py     # IO 接口（Protocol + SilentIO + CliIO + GuiIO）
 ├── tests/                  # 10 个测试文件，98 个测试用例
+├── .github/workflows/      # GitHub Actions CI
 ├── run_cli.py              # CLI 入口
 ├── demo.py                 # 三项机制演示（护栏/反馈/熔断）
 ├── guard_rules.yaml        # 治理规则配置文件
 ├── Makefile                # 一键命令（make test/install/demo/dist/docker-build）
 ├── Dockerfile              # Docker 容器构建配置
+├── .gitlab-ci.yml          # GitLab CI 配置
 ├── install.sh              # Linux/macOS 安装脚本
 ├── install.ps1             # Windows 安装脚本
 ├── requirements.txt        # 依赖清单
-└── pytest.ini              # pytest 配置
+├── pytest.ini              # pytest 配置
+└── README.md
 ```
 
 ## 安全

@@ -32,30 +32,28 @@
 ai_harness/
 ├── .gitignore                    # 必须包含 .env
 ├── opencode.json                 # DeepSeek 接入 + 权限配置
-├── AGENTS.md                     # 项目地图（用户需创建）
-├── SPEC.md                       # 设计文档（第1-2天产出）
-├── CHECKLIST.md                  # 验收清单
-├── PLAN.md                       # 实现计划（第2天产出）
-├── SPEC_PROCESS.md               # 过程文档（第2天产出）
-├── AGENT_LOG.md                  # 日志（第10天）
-├── REFLECTION.md                 # 反思报告（第11天）
-├── README.md                     # 项目说明（第9天）
-├── gate-checklist.md             # 阶段门禁
-├── harness_core.py               # 主循环（第3天）
-├── mock_llm.py                   # Mock LLM 抽象层（第3天）
-├── guardrail.py                  # 护栏（第5天）
-├── executor.py                   # 工具执行（第4天）
-├── run_cli.py                    # CLI 入口（第7天）
-├── demo.py                       # 机制演示（第7天）
-├── test_core.py                  # 核心单测（第3天）
-├── test_guardrail.py             # 护栏单测（第5天）
-├── .github/
-│   └── workflows/
-│       └── ci.yml                # 必须包含 unit-test job（第8天）
-├── docs/
-│   └── KEY_REFERENCE.md          # 本文件
-└── hom_require/                  # 作业要求文档
-```
+├── docs/                         # 设计文档与交付物
+│   ├── SPEC.md                   # 设计文档
+│   ├── PLAN.md                   # 实现计划
+│   ├── SPEC_PROCESS.md           # 过程文档
+│   ├── AGENT_LOG.md              # 日志
+│   ├── REFLECTION.md             # 反思报告
+│   ├── HANDOFF.md                # 项目上下文
+│   ├── PROJECT_AGENT_REFERENCE.md  # 本文件
+│   └── requirements/             # 作业要求文档
+├── README.md                     # 项目说明
+├── src/                          # 核心源码
+│   ├── harness_core.py           # 主循环
+│   ├── guardrail.py              # 护栏
+│   ├── executor.py               # 工具执行
+│   ├── mock_llm.py               # Mock LLM 抽象层
+│   └── ...
+├── tests/                        # 测试
+├── run_cli.py                    # CLI 入口
+├── demo.py                       # 机制演示
+├── .github/workflows/            # CI 配置
+├── .gitlab-ci.yml                # GitLab CI
+└── ...```
 
 
 ## 四、文档模板（供生成时套用）
