@@ -177,7 +177,7 @@ def test_scenario_rejection_self_correct():
     from pathlib import Path
     import tempfile
     with tempfile.TemporaryDirectory() as tmp:
-        ws = Path(tmp)
+        ws = Path(tmp).resolve()
         class PathGuard:
             def check(self, action):
                 if action.tool in ("read_file", "write_file"):
