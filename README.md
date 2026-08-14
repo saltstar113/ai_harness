@@ -28,10 +28,14 @@ bash install.sh
 .\install.ps1
 ```
 
-### 使用 Make
+### 使用 Docker
+
 ```bash
-make install
+docker build -t ai_harness .
+docker run -it --rm -v $(pwd)/workspace:/workspace ai_harness
 ```
+
+首次运行后在容器内执行 `python run_cli.py credential set` 配置 API Key。
 
 ## 配置 API Key
 
@@ -66,28 +70,45 @@ python demo.py
 
 ## 分发
 
-本项目的分发形态为 **源码压缩包 + GitHub Release**。
+本项目同时支持 **源码压缩包** 和 **Docker 容器** 两种分发形态。
 
-### 构建源码压缩包
+### 方式一：源码压缩包
 
 ```bash
 make dist
 # 输出：dist/ai_harness.zip
 ```
 
-### 手动构建
+手动构建：
 
 ```bash
 git archive --format=zip --output=ai_harness.zip HEAD
 ```
 
-### 安装压缩包
+安装压缩包：
 
 ```bash
 unzip ai_harness.zip -d ai_harness
 cd ai_harness
 pip install -r requirements.txt
 python run_cli.py credential set
+```
+
+### 方式二：Docker 容器
+
+```bash
+docker build -t ai_harness .
+docker run -it --rm -v $(pwd)/workspace:/workspace ai_harness --task "你的任务描述"
+```
+
+Key 配置方式：
+
+```bash
+# 方式 A：挂载已有的 .env 文件
+docker run -it --rm -v $(pwd)/workspace:/workspace -v $(pwd)/.env:/app/.env ai_harness --task "..."
+
+# 方式 B：在容器内执行 credential set
+docker run -it --rm -v $(pwd)/workspace:/workspace ai_harness credential set
 ```
 
 ### CI 构建产物
@@ -113,7 +134,8 @@ ai_harness/
 ├── run_cli.py              # CLI 入口
 ├── demo.py                 # 三项机制演示（护栏/反馈/熔断）
 ├── guard_rules.yaml        # 治理规则配置文件
-├── Makefile                # 一键命令（make test/install/demo/dist）
+├── Makefile                # 一键命令（make test/install/demo/dist/docker-build）
+├── Dockerfile              # Docker 容器构建配置
 ├── install.sh              # Linux/macOS 安装脚本
 ├── install.ps1             # Windows 安装脚本
 ├── requirements.txt        # 依赖清单
@@ -137,8 +159,8 @@ ai_harness/
 
 ## 已知限制
 
-- 需要 Python 3.11+（不支持 Python 3.10 及以下）
-- 不在沙箱/容器内运行 agent 时，工具执行器直接操作宿主机文件系统
-- 仅支持 DeepSeek LLM API（接口抽象预留了多 LLM 扩展性）
-- Shell 命令执行依赖于系统 shell（Linux/macOS: `/bin/sh`, Windows: `cmd.exe`）
-- 不支持 REPL 交互模式（仅 `--task` 单次任务模式）
+- **Python 3.11+**（不支持 Python 3.10 及以下）
+- **运行环境**：agent 通过代码级治理（路径隔离 `is_relative_to`、Shell `shlex`+正则双重校验、scope 过滤、HITL 审批）实现工作区级安全边界，未使用 OS 级容器隔离。如需完全隔离，推荐使用 Docker 分发方式
+- **LLM 供应商**：仅支持 DeepSeek LLM API（接口抽象预留了多 LLM 扩展性）
+- **Shell 兼容性**：命令执行依赖系统 shell（Linux/macOS: `/bin/sh`, Windows: `cmd.exe`）
+- **交互模式**：不支持 REPL 交互模式（仅 `--task` 单次任务模式）
