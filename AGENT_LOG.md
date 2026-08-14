@@ -574,3 +574,73 @@ def check(self, action: Action, scope: str | None = None) -> GuardDecision:
 | 冷启动验证 | 单人项目中最接近"同侪评审"的机制，暴露的不是"代码写错了"，而是"你没写下来的假设" |
 | 代码审查 | 不可跳过。2 Critical + 5 Important 问题的发现验证了"即使是 AI 写的代码也需要人工审查"的纪律 |
 | 真实 API 测试 | 揭示 LLM 行为的不可预测性（参数名不稳定、重复成功循环、中文提示词不稳定），这些在 mock 测试中无法覆盖 |
+
+---
+
+## 2026-08-13/14 — 交付物合规检查与补齐（OpenCode 会话）
+
+**技能：** 无（手动协作）
+
+**关键 prompt/context：** 用户要求逐项检查交付物清单（通用要求 §五）并补齐缺口。上下文：全部 18 个 task 已完成，98 测试全绿，6 个 PR 待 merge。
+
+### 交付物逐项检查
+
+| # | 要求 | 状态 | 处理 |
+|---|------|------|------|
+| 1 | SPEC.md / PLAN.md / SPEC_PROCESS.md | ✅ | — |
+| 2 | 完整源代码（commit/PR 历史，无凭据） | ✅ | `git log -p -- .env` 确认无凭据提交 |
+| 3 | 分发产物与说明 | ⚠️ | 需补充 Dockerfile（容器分发） |
+| 4 | README.md | ⚠️ | 缺少前置条件表、分发命令、GitLab CI 说明 |
+| 5 | AGENT_LOG.md | ✅ | — |
+| 6 | `.gitlab-ci.yml` + `unit-test` job | ❌ | 完全缺失；现有 `.github/workflows/test.yml` job 名叫 `test` 而非 `unit-test` |
+| 7 | CI/CD 执行记录 | ⚠️ | 推送到 GitLab 后自动生成 |
+| 8 | REFLECTION.md | ⚠️ | 待完成（用户后续处理） |
+| 9 | 线上部署 URL | ✅ | 方案一：GitHub Release 链接 |
+
+### 修复过程
+
+**Round 1：补齐基础设施（4ee6f42 → dd98e09）**
+
+| 文件 | 变更 | Commit |
+|------|------|--------|
+| `Makefile` | 新增：test/install/demo/clean/dist 5 个 target | `9963111` |
+| `.github/workflows/test.yml` | 新增：3 平台 × 2 Python 矩阵 CI | `9963111` |
+| `README.md` | 新增前置条件表（Python/OS/Shell/架构）、分发章节（make dist + 手动构建 + CI 产物）、完善目录结构注释、安全边界补充（路径隔离/命令校验/默认拒绝）、已知限制补充（REPL 模式、Shell 差异） | `dd98e09` |
+
+**Round 2：GitLab CI 对齐（914f063）**
+
+用户指出作业要求 `.gitlab-ci.yml`（而非 `.github/workflows/`），且 job 必须名为 `unit-test`。
+
+| 文件 | 变更 | Commit |
+|------|------|--------|
+| `.gitlab-ci.yml` | 新增：`python:3.11` 镜像，单一 `unit-test` job | `914f063` |
+| `.github/workflows/test.yml` | job 名 `test` → `unit-test` | `914f063` |
+
+**Round 3：治理成果展示 + 容器分发（4efcf63）**
+
+用户指出"已知限制"中"非沙箱"条目自我否定治理成果，要求改写并补充 Dockerfile。
+
+| 文件 | 变更 | Commit |
+|------|------|--------|
+| `Dockerfile` | 新增：`python:3.11-slim`，WORKDIR /app，ENTRYPOINT run_cli.py | `4efcf63` |
+| `README.md` | 已知限制改写："代码级治理（路径隔离 + Shell 双重校验 + scope 过滤 + HITL）"替代"非沙箱"；分发章节新增 Docker 容器方式（build/run/key 配置） | `4efcf63` |
+| `Makefile` | 新增 `docker-build`、`docker-run` 两个 target | `4efcf63` |
+
+**Round 4：清理临时文件**
+
+删除 `.superpowers/` 目录（SDD 内部追踪文件，全部 task 已完成，不再需要）。
+
+### 关键讨论
+
+**治理四种方式全覆盖：** 用户确认项目的治理维度覆盖了作业要求的所有四种方式——护栏（规则引擎）、沙箱（路径隔离）、HITL 状态机（审批流）、范围围栏（scope 过滤），而非四种之一。这是项目的主要贡献维度。
+
+**仅 DeepSeek / 无 REPL：** 用户询问这两项是否加分项。结论：不是。`LLMClient` 接口已抽象好，加实现只是体力活；`AgentLoop.run()` 是纯函数，套 REPL 不体现深度。这两项是 SPEC §10.2 明确划入 v1.0 范围外的决策，理由是"聚焦治理主维度"。补上反而弱化 focus。
+
+**Dockerfile 一举两得：** 同时满足 §3.2 容器分发要求 + 消解"非沙箱"限制（推荐 Docker 运行即可获得 OS 级隔离）。
+
+### 学到的教训
+
+1. **交付物清单的逐项核查是最后一道防线。** 作业要求 9 项交付物，即使全部代码已完成，文档层面的缺口（`.gitlab-ci.yml`、README 前置条件、分发命令）仍可能遗漏。在"代码写完"后专门花时间做合规检查是必要的。
+2. **"非沙箱"措辞的自我否定。** 原始 README 写"不在沙箱/容器内运行"听起来像安全漏洞，但实际上项目用代码实现了一套完整的治理沙箱。措辞不当会直接削弱评审印象。改写为"代码级治理 + 推荐 Docker 兜底"既诚实又展示了工程深度。
+3. **GitHub vs GitLab CI 的命名差异。** NJU GitLab 仓库要求 `.gitlab-ci.yml`，不能仅凭 GitHub Actions 替代。作业明确要求"通过同一个 NJU Git 仓库链接提交"，CI 配置文件必须对齐 GitLab 平台。
+4. **作业通用要求是检查清单，不是参考。** 通用要求 §五的 9 项交付物必须逐项对照，不能凭印象。"REFLECTION.md 1500-2500 字"、"`.gitlab-ci.yml` 含 unit-test job"——这些细节如果不逐字核对很容易遗漏。
