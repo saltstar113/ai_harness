@@ -8,39 +8,21 @@
 
 ### 1.1 最大作用：brainstorming（3 轮迭代）
 
-three rounds of brainstorming were the single highest-ROI phase of the entire project. its
-HARD-GATE mechanism prevented any "skip directly to coding" impulse. the agent
-proactively asked 3 architecture questions (feedback granularity, memory strategy, governance
-taxonomy) before i had even articulated them myself. each forced a conscious design decision
-rather than a "let's just start coding" intuition.
+三轮 brainstorming 是整个项目中投资回报率最高的阶段。它的 "HARD-GATE" 机制（逐章签字确认）阻止了任何"跳过设计直接写代码"的冲动。智能体在我自己还没想清楚之前，就主动提出了 3 个架构决策问题（反馈闭环粒度、记忆方案、治理分类体系）。每个问题都迫使我在模糊的直觉上形成明确的立场，而不是"先写着再说"。
 
-concrete evidence: the agent's proposed Shell matching logic (`tokens[0] + re.fullmatch`) had a
-security-critical `sudo` bypass bug. i caught it in round 2 review because the
-"chunked presentation + sign-off" workflow let me deep-dive on one section at a time. had the
-agent generated the full 11-chapter spec in one shot, i would almost certainly have missed it.
+具体证据：智能体初稿中的 Shell 命令匹配逻辑（`tokens[0] + re.fullmatch`）存在一个安全关键的 `sudo` 绕过漏洞。我在第二轮审查中发现了它，因为"分块呈现 + 逐章签字"的流程让我能每次只深入审查一个章节。如果智能体一次性生成全部 11 章 SPEC，我几乎肯定会遗漏这个 Bug。
 
 ### 1.2 第二作用：subagent-driven-development（6 个 worktree 分支）
 
-parallel execution across 6 git worktrees compressed what would have been a 2-week serial
-effort into ~2 days. each subagent received a task brief extracted from PLAN.md, worked
-independently, and produced commits that merged cleanly. the key enabler was the PLAN.md task
-granularity—each task was self-contained enough that subagents rarely needed cross-branch
-coordination.
+6 个 git worktree 的并行执行把原本需要约 2 周的串行开发压缩到了约 2 天。每个 subagent 收到从 PLAN.md 提取的 task brief，独立工作，产出的 commit 都能干净地合并。关键前提是 PLAN.md 的 task 粒度——每个 task 足够自包含，subagent 几乎不需要跨分支协调。
 
 ### 1.3 第三作用：requesting-code-review（1 次）
 
-the review caught 2 Critical bugs (feedback context not injected into LLM messages, YAML
-regex escaping broken) and 5 Important issues. the Critical bug where `context_for_llm` was
-computed but never appended to `messages` would have silently broken the entire feedback
-loop—every test would pass (they test individual components), but the agent would never learn
-from its mistakes in production.
+代码审查发现了 2 个 Critical 问题（反馈上下文未注入 LLM messages、YAML 正则转义错误）和 5 个 Important 问题。其中 `context_for_llm` 已计算但从未拼接到 `messages` 列表的 Critical Bug 会无声地让整个反馈闭环失效——所有测试都会通过（它们测试的是单个组件），但 agent 在生产环境中永远不会从错误中学习。
 
-### 1.4 第三作用：cold-start validation（§4.5）
+### 1.4 第四作用：冷启动验证（§4.5）
 
-not technically a skill, but the most valuable quality signal. a fresh agent running on SPEC
-+ PLAN alone hit 3 blockers, two of which were genuine documentation defects (type
-declaration inconsistency, missing `git init`). this is the closest thing a solo project gets
-to peer review.
+严格来说不是一项技能，但是最有价值的质量信号。一个全新的 agent 仅凭 SPEC + PLAN 就遇到了 3 个阻断点，其中 2 个是真正的文档缺陷（类型声明不一致、缺少 `git init`）。这是单人项目中最接近"同侪评审"的机制。
 
 ---
 
@@ -48,28 +30,19 @@ to peer review.
 
 ### 2.1 finishing-a-development-branch
 
-the skill's workflow assumes a multi-developer team with PR review, CI checks, and
-deployment pipelines. in a solo project, "finishing" a branch meant `git merge` and `git
-branch -d`. the skill's checklist of "verify all tests pass, review diff, update CHANGELOG"
-was redundant with the TDD discipline already in place.
+这个技能的工作流假设了多开发者团队、PR review、CI 检查、部署流水线等场景。在单人项目中，"完成一个分支"就是 `git merge` 和 `git branch -d`。技能提供的"验证所有测试通过、审查 diff、更新 CHANGELOG"等 checklist 与 TDD 纪律完全重叠，没有新增信息。
 
 ### 2.2 verification-before-completion
 
-the skill's instruction to "run verification commands and confirm output before making any
-success claims" overlaps 100% with the TDD cycle. after every commit, `pytest` was already
-running. the skill added no new information.
+该技能要求"运行验证命令并确认输出后再声称成功"，这与 TDD 循环 100% 重叠。每次 commit 后 `pytest` 已经在运行，技能没有提供任何额外价值。
 
 ### 2.3 writing-skills
 
-this skill was loaded but never invoked—it's a meta-skill for creating new skills, not
-relevant to building a coding agent harness.
+这个技能被加载了但从未被调用——它是一个元技能，用于创建新技能，与构建 coding agent harness 无关。
 
 ### 2.4 判断标准
 
-a skill is "形式大于实质" when: (a) its instructions overlap with a discipline already
-enforced by TDD, or (b) it assumes a team context that doesn't apply to a solo project. the
-skills that added real value were those that forced a decision before action (brainstorming),
-parallelized independent work (subagent-driven), or caught errors after the fact (code review).
+一项技能"形式大于实质"的判断标准是：(a) 它的指令与 TDD 已有的纪律重叠，或 (b) 它假设了不适用于单人项目的团队协作场景。真正发挥价值的技能是那些在行动前强制决策（brainstorming）、并行化独立工作（subagent-driven）、或事后发现错误（code review）的技能。
 
 ---
 
